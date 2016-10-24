@@ -56,6 +56,7 @@ func (h *KubeHandler) registerServer() {
 	provider.RegisterLoadBalancersServer(h.server, h)
 	provider.RegisterNetworksServer(h.server, h)
 	provider.RegisterPodsServer(h.server, h)
+	provider.RegisterSubnetsServer(h.server, h)
 }
 
 func (h *KubeHandler) Active(c context.Context, req *provider.ActiveRequest) (*provider.ActivateResponse, error) {
@@ -144,6 +145,57 @@ func (h *KubeHandler) DeleteNetwork(c context.Context, req *provider.DeleteNetwo
 
 	glog.V(4).Infof("DeleteNetwork result %v", resp)
 	return &resp, nil
+}
+
+func (h *KubeHandler) ListSubnets(c context.Context, req *provider.ListSubnetsRequest) (*provider.ListSubnetsResponse, error) {
+	glog.V(4).Infof("ListSubnets with request %v", req.String())
+
+	resp := provider.ListSubnetsResponse{}
+	var result []*provider.Subnet
+	var err error
+
+	result, err = h.driver.ListSubnets(req.NetworkID)
+
+	if err != nil {
+		resp.Error = err.Error()
+	} else {
+		resp.Subnets = result
+	}
+
+	glog.V(4).Infof("ListSubnets result %v", resp)
+	return &resp, nil
+}
+
+func (h *KubeHandler) CreateSubnet(c context.Context, req *provider.CreateSubnetRequest) error {
+	glog.V(4).Infof("CreateSubnet with request %v", req)
+
+	resp := provider.CommonResponse{}
+	req.Subnet.TenantID = h.driver.ToTenantID(req.Subnet.TenantID)
+	err := h.driver.CreateSubnet(req.Network, req.NetworkID)
+	if err != nil {
+		resp.Error = err.Error()
+	}
+
+	glog.V(4).Infof("CreateSubnet result %v", resp)
+	return &resp, nil
+}
+
+func (h *KubeHandler) DeleteSubnet(c context.Context, req *provider.DeleteSubnetRequest) error {
+	glog.V(4).Infof("DeleteSubnet with request %v", req.String())
+
+	resp := provider.CommonResponse{}
+	err := h.driver.DeleteSubnet(req.SubnetName)
+	if err != nil {
+		resp.Error = err.Error()
+	}
+
+	glog.V(4).Infof("DeleteSubnet result %v", resp)
+	return &resp, nil
+}
+
+func (h *KubeHandler) UpdateSubnet(c context.Context, req *provider.UpdateSubnetRequest) error {
+	//TODO (heartlock)update a subnet
+	return nil
 }
 
 func (h *KubeHandler) GetLoadBalancer(c context.Context, req *provider.GetLoadBalancerRequest) (*provider.GetLoadBalancerResponse, error) {

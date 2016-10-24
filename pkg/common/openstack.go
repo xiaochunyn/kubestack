@@ -331,9 +331,10 @@ func (os *OpenStack) ToProviderStatus(status string) string {
 
 // Create network
 func (os *OpenStack) CreateNetwork(network *provider.Network) error {
-	if len(network.Subnets) == 0 {
+	//TODO (heartlock)support create network without subnet
+	/*if len(network.Subnets) == 0 {
 		return errors.New("Subnets is null")
-	}
+	}*/
 
 	// create network
 	opts := networks.CreateOpts{
@@ -511,6 +512,75 @@ func (os *OpenStack) DeleteNetwork(networkName string) error {
 		}
 	}
 
+	return nil
+}
+
+//List all subnets in the  network
+func (os *OpenStack) ListSubnets(networkID string) ([]subnets.Subnet, error) {
+	//TODO (heartlock)list all subnets in a network
+	return nil, nil
+}
+
+//Create a subnet in a network
+func (os *OpenStack) CreateSubnet(subnet *provider.Subnet, networkID string) error {
+	//create a subnet and contect it to router
+	opts := subnets.CreateOpts{
+		NetworkID:      subnet.NetworkID,
+		CIDR:           subnet.Subnet.Cidr,
+		Name:           subnet.Subnet.Name,
+		IPVersion:      gophercloud.IPv4,
+		TenantID:       network.TenantID,
+		GatewayIP:      &sub.Gateway,
+		DNSNameservers: sub.Dnsservers,
+	}
+	osSubnet, err := subnet.Create(os.network, opts).Extract()
+	if err != nil {
+		glog.Errorf("Create openstack subnet %s failed: %v", subnet.Name, err)
+		return err
+	}
+
+	// add subnet to router
+	opts := routers.AddInterfaceOpts{
+		SubnetID: osSubnet.ID,
+	}
+	network := os.GetNetworkByID(subnet.NetworkID)
+
+	osRouter := os.getRouterByName(network.Name)
+
+	_, err = routers.AddInterface(os.network, osRouter.ID, opts).Extract()
+	if err != nil {
+		glog.Errorf("Create openstack subnet %s failed: %v", subnet.Name, err)
+		delErr := os.DeleteSubnet(osSubnet.Name)
+		if delErr != nil {
+			glog.Errorf("Delete openstack subnet %s failed: %v", subnet.Name, delErr)
+		}
+		return err
+	}
+
+	return nil
+}
+
+// Delete a subnet from a network
+func (os *OpenStack) DeleteSubnet(subnetName string) error {
+	// delete all subnets
+	sunet := os.GetSubnetByName()
+	opts := routers.RemoveInterfaceOpts{SubnetID: subnet}
+	_, err := routers.RemoveInterface(os.network, router.ID, opts).Extract()
+	if err != nil {
+		glog.Errorf("Get openstack router %s error: %v", networkName, err)
+		return err
+	}
+
+	err = subnets.Delete(os.network, subnet).ExtractErr()
+	if err != nil {
+		glog.Errorf("Delete openstack subnet %s error: %v", subnet, err)
+		return err
+	}
+}
+
+//Update subnet
+func (os *OpenStack) UpdateSubnet(subnet *provider.Subnet) error {
+	//TODO (heartlock)update subnet
 	return nil
 }
 

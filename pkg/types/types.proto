@@ -13,6 +13,13 @@ service Networks {
     rpc DeleteNetwork(DeleteNetworkRequest) returns (CommonResponse) {}
 }
 
+service Subnets {
+	rpc ListSubnets(ListSubnetsRequest) returns (ListSubnetsResponse) {}
+    rpc CreateSubnet(CreateSubnetRequest) returns (CommonResponse) {}
+    rpc UpdateSubnet(UpdateSubnetRequest) returns (CommonResponse) {}
+    rpc DeleteSubnet(DeleteSubnetRequest) returns (CommonResponse) {}
+}
+
 service LoadBalancers {
 	rpc GetLoadBalancer(GetLoadBalancerRequest) returns (GetLoadBalancerResponse) {}
 	rpc CreateLoadBalancer(CreateLoadBalancerRequest) returns (CreateLoadBalancerResponse) {}
@@ -88,6 +95,27 @@ message UpdateNetworkRequest {
 
 message DeleteNetworkRequest {
     string networkName = 1;
+}
+
+message ListSubnetsRequest {
+	string networkID = 1;
+}
+
+message ListSubnetsResponse {
+	repeated Subnet subnets = 1;
+}
+
+message CreateSubnetRequest {
+	Subnet subnet = 1;
+	string networkID = 2;
+}
+
+message DeleteSubnetRequest {
+	string subnetName = 1;
+}
+
+message UpdateSubnetRequest {
+	Subnet subnet = 1;
 }
 
 message GetLoadBalancerRequest {
