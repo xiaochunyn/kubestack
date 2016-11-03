@@ -210,6 +210,6 @@ message PodStatusRequest {
 }
 
 message PodStatusResponse {
-	string ip       = 1;
+    string ip       = 1;
     string error    = 2;
 }

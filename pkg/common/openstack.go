@@ -347,7 +347,11 @@ func (os *OpenStack) CreateNetwork(network *provider.Network) error {
 		glog.Errorf("Create openstack network %s failed: %v", network.Name, err)
 		return err
 	}
-
+	glog.V(2).Info("Create openstack network %s successed ", network.Name)
+	if len(network.Subnets) == 0 {
+		glog.V(2).Info("Subnets is null, exist ")
+		return nil
+	}
 	// create router
 	routerOpts := routers.CreateOpts{
 		Name:        network.Name,
@@ -363,7 +367,7 @@ func (os *OpenStack) CreateNetwork(network *provider.Network) error {
 		}
 		return err
 	}
-
+	glog.V(2).Info("Create openstack router %s successed ", osRouter.Name)
 	// create subnets and connect them to router
 	networkID := osNet.ID
 	network.Status = os.ToProviderStatus(osNet.Status)
@@ -388,7 +392,8 @@ func (os *OpenStack) CreateNetwork(network *provider.Network) error {
 			}
 			return err
 		}
-
+		glog.V(2).Info("Create openstack subnet %s successed ", sub.Name)
+		//os.CreateSubnet(sub, networkID)
 		// add subnet to router
 		opts := routers.AddInterfaceOpts{
 			SubnetID: s.ID,
@@ -402,6 +407,7 @@ func (os *OpenStack) CreateNetwork(network *provider.Network) error {
 			}
 			return err
 		}
+		glog.V(2).Info("router %s has added to subnet %s ", osRouter.Name, sub.Name)
 	}
 
 	return nil
@@ -409,7 +415,7 @@ func (os *OpenStack) CreateNetwork(network *provider.Network) error {
 
 // Update network
 func (os *OpenStack) UpdateNetwork(network *provider.Network) error {
-	// TODO: update network subnets
+	// TODO(): update network subnets
 	return nil
 }
 
@@ -518,69 +524,156 @@ func (os *OpenStack) DeleteNetwork(networkName string) error {
 //List all subnets in the  network
 func (os *OpenStack) ListSubnets(networkID string) ([]subnets.Subnet, error) {
 	//TODO (heartlock)list all subnets in a network
-	return nil, nil
+	var results []subnets.Subnet
+	opts := subnets.ListOpts{
+		NetworkID: networkID,
+	}
+	pager := subnets.List(os.network, opts)
+	err := pager.EachPage(func(page pagination.Page) (bool, error) {
+		subnetList, err := subnets.ExtractSubnets(page)
+		if err != nil {
+			glog.Errorf("Get openstack subnets error: %v", err)
+			return false, err
+		}
+
+		for _, subnet := range subnetList {
+			results = append(results, subnet)
+		}
+		return true, err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return results, nil
 }
 
 //Create a subnet in a network
-func (os *OpenStack) CreateSubnet(subnet *provider.Subnet, networkID string) error {
+func (os *OpenStack) CreateSubnet(subnet *provider.Subnet) error {
 	//create a subnet and contect it to router
 	opts := subnets.CreateOpts{
 		NetworkID:      subnet.NetworkID,
-		CIDR:           subnet.Subnet.Cidr,
-		Name:           subnet.Subnet.Name,
+		CIDR:           subnet.Cidr,
+		Name:           subnet.Name,
 		IPVersion:      gophercloud.IPv4,
-		TenantID:       network.TenantID,
-		GatewayIP:      &sub.Gateway,
-		DNSNameservers: sub.Dnsservers,
+		TenantID:       subnet.Tenantid,
+		GatewayIP:      &subnet.Gateway,
+		DNSNameservers: subnet.Dnsservers,
 	}
-	osSubnet, err := subnet.Create(os.network, opts).Extract()
+	osSubnet, err := subnets.Create(os.network, opts).Extract()
 	if err != nil {
 		glog.Errorf("Create openstack subnet %s failed: %v", subnet.Name, err)
 		return err
 	}
-
+	glog.V(2).Info("Create openstack subnet %s successed ", subnet.Name)
 	// add subnet to router
-	opts := routers.AddInterfaceOpts{
+	opts1 := routers.AddInterfaceOpts{
 		SubnetID: osSubnet.ID,
 	}
-	network := os.GetNetworkByID(subnet.NetworkID)
-
-	osRouter := os.getRouterByName(network.Name)
-
-	_, err = routers.AddInterface(os.network, osRouter.ID, opts).Extract()
+	network, err := os.GetNetworkByID(subnet.NetworkID)
+	if err != nil {
+		glog.Errorf("Cet openstack network %s failed: %v", subnet.NetworkID, err)
+		return err
+	}
+	osRouter, err := os.getRouterByName(network.Name)
+	if err != nil {
+		glog.Errorf("Cet openstack router failed: %v", err)
+		return err
+	}
+	_, err = routers.AddInterface(os.network, osRouter.ID, opts1).Extract()
 	if err != nil {
 		glog.Errorf("Create openstack subnet %s failed: %v", subnet.Name, err)
-		delErr := os.DeleteSubnet(osSubnet.Name)
+		delErr := os.DeleteSubnet(osSubnet.ID, osSubnet.NetworkID)
 		if delErr != nil {
 			glog.Errorf("Delete openstack subnet %s failed: %v", subnet.Name, delErr)
 		}
 		return err
 	}
+	glog.V(2).Info("router %s has added to subnet %s ", osRouter.Name, subnet.Name)
 
 	return nil
 }
 
 // Delete a subnet from a network
-func (os *OpenStack) DeleteSubnet(subnetName string) error {
-	// delete all subnets
-	sunet := os.GetSubnetByName()
-	opts := routers.RemoveInterfaceOpts{SubnetID: subnet}
-	_, err := routers.RemoveInterface(os.network, router.ID, opts).Extract()
+func (os *OpenStack) DeleteSubnet(subnetID string, networkID string) error {
+	subnet, err := os.getProviderSubnet(subnetID)
 	if err != nil {
-		glog.Errorf("Get openstack router %s error: %v", networkName, err)
+		glog.Errorf("Get openstack subnet failed: %v", err)
 		return err
+	}
+	osNetwork, err := os.getOpenStackNetworkByID(networkID)
+	if err != nil {
+		glog.Errorf("Get openstack network failed: %v", err)
+		return err
+	}
+	if subnet != nil {
+		// Delete subnet's ports
+		opts := ports.ListOpts{NetworkID: networkID}
+		pager := ports.List(os.network, opts)
+		err := pager.EachPage(func(page pagination.Page) (bool, error) {
+			portList, err := ports.ExtractPorts(page)
+			if err != nil {
+				glog.Errorf("Get openstack ports error: %v", err)
+				return false, err
+			}
+
+			for _, port := range portList {
+				if port.DeviceOwner == "network:router_interface" {
+					continue
+				}
+				//for _, portIP := range port.FixedIPs {
+				//TODO (mozhuli) find the subnet's port
+				err = ports.Delete(os.network, port.ID).ExtractErr()
+				if err != nil {
+					glog.Warningf("Delete port %v failed: %v", port.ID, err)
+				}
+
+			}
+
+			return true, nil
+		})
+		if err != nil {
+			glog.Errorf("Delete ports error: %v", err)
+		}
+
+		router, err := os.getRouterByName(osNetwork.Name)
+		if err != nil {
+			glog.Errorf("Get openstack router %s error: %v", osNetwork.Name, err)
+			return err
+		}
+
+		// delete subnet
+		if router != nil {
+			opts := routers.RemoveInterfaceOpts{SubnetID: subnetID}
+			_, err := routers.RemoveInterface(os.network, router.ID, opts).Extract()
+			if err != nil {
+				glog.Errorf("Get openstack router %s error: %v", osNetwork.Name, err)
+				return err
+			}
+		}
+
+		err = subnets.Delete(os.network, subnet.Uid).ExtractErr()
+		if err != nil {
+			glog.Errorf("Delete openstack subnet %s error: %v", subnet, err)
+			return err
+		}
+
 	}
 
-	err = subnets.Delete(os.network, subnet).ExtractErr()
-	if err != nil {
-		glog.Errorf("Delete openstack subnet %s error: %v", subnet, err)
-		return err
-	}
+	return nil
 }
 
 //Update subnet
 func (os *OpenStack) UpdateSubnet(subnet *provider.Subnet) error {
 	//TODO (heartlock)update subnet
+	opts := subnets.UpdateOpts{
+		Name: subnet.Name,
+	}
+	_, err := subnets.Update(os.network, subnet.Uid, opts).Extract()
+	if err != nil {
+		glog.Errorf("Update openstack subnet %s failed: %v", subnet.Name, err)
+		return err
+	}
 	return nil
 }
 
