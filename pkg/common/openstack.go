@@ -726,7 +726,7 @@ func (os *OpenStack) CreatePort(networkID, tenantID, portName, podHostname strin
 	}
 
 	// Update dns_name in order to make sure it is correct
-	updateOpts := portsbinding.UpdateOpts{
+	/*updateOpts := portsbinding.UpdateOpts{
 		DNSName: podHostname,
 	}
 	_, err = portsbinding.Update(os.network, port.ID, updateOpts).Extract()
@@ -734,7 +734,7 @@ func (os *OpenStack) CreatePort(networkID, tenantID, portName, podHostname strin
 		ports.Delete(os.network, port.ID)
 		glog.Errorf("Update port %s failed: %v", portName, err)
 		return nil, err
-	}
+	}*/
 
 	return port, nil
 }
