@@ -331,11 +331,6 @@ func (os *OpenStack) ToProviderStatus(status string) string {
 
 // Create network
 func (os *OpenStack) CreateNetwork(network *provider.Network) error {
-	//TODO (heartlock)support create network without subnet
-	/*if len(network.Subnets) == 0 {
-		return errors.New("Subnets is null")
-	}*/
-
 	// create network
 	opts := networks.CreateOpts{
 		Name:         network.Name,
@@ -442,8 +437,8 @@ func (os *OpenStack) getRouterByName(name string) (*routers.Router, error) {
 }
 
 // Delete network by networkName
-func (os *OpenStack) DeleteNetwork(networkName string) error {
-	osNetwork, err := os.getOpenStackNetworkByName(networkName)
+func (os *OpenStack) DeleteNetwork(networkID string) error {
+	osNetwork, err := os.getOpenStackNetworkByID(networkID)
 	if err != nil {
 		glog.Errorf("Get openstack network failed: %v", err)
 		return err
@@ -451,7 +446,7 @@ func (os *OpenStack) DeleteNetwork(networkName string) error {
 
 	if osNetwork != nil {
 		// Delete ports
-		opts := ports.ListOpts{NetworkID: osNetwork.ID}
+		opts := ports.ListOpts{NetworkID: networkID}
 		pager := ports.List(os.network, opts)
 		err := pager.EachPage(func(page pagination.Page) (bool, error) {
 			portList, err := ports.ExtractPorts(page)
@@ -523,7 +518,6 @@ func (os *OpenStack) DeleteNetwork(networkName string) error {
 
 //List all subnets in the  network
 func (os *OpenStack) ListSubnets(networkID string) ([]subnets.Subnet, error) {
-	//TODO (heartlock)list all subnets in a network
 	var results []subnets.Subnet
 	opts := subnets.ListOpts{
 		NetworkID: networkID,
