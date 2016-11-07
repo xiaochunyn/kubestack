@@ -105,6 +105,7 @@ message ListSubnetsRequest {
 
 message ListSubnetsResponse {
 	repeated Subnet subnets = 1;
+	string error = 2;
 }
 
 message CreateSubnetRequest {
@@ -192,6 +193,7 @@ message SetupPodRequest {
     string containerRuntime     = 3;
     string podInfraContainerID  = 4;
     Network network             = 5;
+    string subnetID	=6;
 }
 
 message TeardownPodRequest {

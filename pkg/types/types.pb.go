@@ -210,6 +210,7 @@ func (*ListSubnetsRequest) ProtoMessage()    {}
 
 type ListSubnetsResponse struct {
 	Subnets []*Subnet `protobuf:"bytes,1,rep,name=subnets" json:"subnets,omitempty"`
+	Error   string    `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 }
 
 func (m *ListSubnetsResponse) Reset()         { *m = ListSubnetsResponse{} }
@@ -413,6 +414,7 @@ type SetupPodRequest struct {
 	ContainerRuntime    string   `protobuf:"bytes,3,opt,name=containerRuntime,proto3" json:"containerRuntime,omitempty"`
 	PodInfraContainerID string   `protobuf:"bytes,4,opt,name=podInfraContainerID,proto3" json:"podInfraContainerID,omitempty"`
 	Network             *Network `protobuf:"bytes,5,opt,name=network" json:"network,omitempty"`
+	SubnetID            string   `protobuf:"bytes,6,opt,name=subnetID,proto3" json:"subnetID,omitempty"`
 }
 
 func (m *SetupPodRequest) Reset()         { *m = SetupPodRequest{} }

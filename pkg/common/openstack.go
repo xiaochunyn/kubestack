@@ -410,7 +410,15 @@ func (os *OpenStack) CreateNetwork(network *provider.Network) error {
 
 // Update network
 func (os *OpenStack) UpdateNetwork(network *provider.Network) error {
-	// TODO(): update network subnets
+	// TODO(): update network
+	opts := networks.UpdateOpts{
+		Name: network.Name,
+	}
+	_, err := networks.Update(os.network, network.Uid, opts).Extract()
+	if err != nil {
+		glog.Errorf("Update openstack network %s failed: %v", network.Name, err)
+		return err
+	}
 	return nil
 }
 
@@ -472,9 +480,9 @@ func (os *OpenStack) DeleteNetwork(networkID string) error {
 			glog.Errorf("Delete ports error: %v", err)
 		}
 
-		router, err := os.getRouterByName(networkName)
+		router, err := os.getRouterByName(osNetwork.Name)
 		if err != nil {
-			glog.Errorf("Get openstack router %s error: %v", networkName, err)
+			glog.Errorf("Get openstack router %s error: %v", osNetwork.Name, err)
 			return err
 		}
 
@@ -484,7 +492,7 @@ func (os *OpenStack) DeleteNetwork(networkID string) error {
 				opts := routers.RemoveInterfaceOpts{SubnetID: subnet}
 				_, err := routers.RemoveInterface(os.network, router.ID, opts).Extract()
 				if err != nil {
-					glog.Errorf("Get openstack router %s error: %v", networkName, err)
+					glog.Errorf("Get openstack router %s error: %v", osNetwork.Name, err)
 					return err
 				}
 			}
@@ -517,8 +525,8 @@ func (os *OpenStack) DeleteNetwork(networkID string) error {
 }
 
 //List all subnets in the  network
-func (os *OpenStack) ListSubnets(networkID string) ([]subnets.Subnet, error) {
-	var results []subnets.Subnet
+func (os *OpenStack) ListSubnets(networkID string) ([]*provider.Subnet, error) {
+	var results []*provider.Subnet
 	opts := subnets.ListOpts{
 		NetworkID: networkID,
 	}
@@ -530,7 +538,12 @@ func (os *OpenStack) ListSubnets(networkID string) ([]subnets.Subnet, error) {
 			return false, err
 		}
 
-		for _, subnet := range subnetList {
+		for _, ossubnet := range subnetList {
+			subnet, err := os.getProviderSubnet(ossubnet.ID)
+			if err != nil {
+				glog.Errorf("Get openstack subnet failed: %v", err)
+				return false, err
+			}
 			results = append(results, subnet)
 		}
 		return true, err
@@ -541,6 +554,19 @@ func (os *OpenStack) ListSubnets(networkID string) ([]subnets.Subnet, error) {
 
 	return results, nil
 }
+
+/*func (os *OpenStack) osSubnetstoProviderSubnets(osSubnets []*subnets.Subnet) ([]*provider.Subnet, error) {
+	var providerSubnets []*provider.Subnet
+	for _, subnet := range osSubnets {
+		s, err := os.getProviderSubnet(subnet.ID)
+		if err != nil {
+			return nil, err
+		}
+		providerSubnets = append(providerSubnets, s)
+	}
+
+	return providerSubnets, nil
+}*/
 
 //Create a subnet in a network
 func (os *OpenStack) CreateSubnet(subnet *provider.Subnet) error {
@@ -615,15 +641,16 @@ func (os *OpenStack) DeleteSubnet(subnetID string, networkID string) error {
 				if port.DeviceOwner == "network:router_interface" {
 					continue
 				}
-				//for _, portIP := range port.FixedIPs {
-				//TODO (mozhuli) find the subnet's port
-				err = ports.Delete(os.network, port.ID).ExtractErr()
-				if err != nil {
-					glog.Warningf("Delete port %v failed: %v", port.ID, err)
+				for _, portIP := range port.FixedIPs {
+					//TODO (mozhuli) find the subnet's port
+					if portIP.SubnetID == subnetID {
+						err = ports.Delete(os.network, port.ID).ExtractErr()
+						if err != nil {
+							glog.Warningf("Delete port %v failed: %v", port.ID, err)
+						}
+					}
 				}
-
 			}
-
 			return true, nil
 		})
 		if err != nil {
@@ -661,7 +688,9 @@ func (os *OpenStack) DeleteSubnet(subnetID string, networkID string) error {
 func (os *OpenStack) UpdateSubnet(subnet *provider.Subnet) error {
 	//TODO (heartlock)update subnet
 	opts := subnets.UpdateOpts{
-		Name: subnet.Name,
+		Name:           subnet.Name,
+		GatewayIP:      subnet.Gateway,
+		DNSNameservers: subnet.Dnsservers,
 	}
 	_, err := subnets.Update(os.network, subnet.Uid, opts).Extract()
 	if err != nil {
@@ -785,13 +814,16 @@ func (os *OpenStack) ensureSecurityGroup(tenantID string) (string, error) {
 }
 
 // Create an port
-func (os *OpenStack) CreatePort(networkID, tenantID, portName, podHostname string) (*portsbinding.Port, error) {
+func (os *OpenStack) CreatePort(networkID, tenantID, portName, podHostname, subnetID string) (*portsbinding.Port, error) {
 	securitygroup, err := os.ensureSecurityGroup(tenantID)
 	if err != nil {
 		glog.Errorf("EnsureSecurityGroup failed: %v", err)
 		return nil, err
 	}
-
+	var fixedIPs [1]ports.IP
+	fixedIPs[0] = ports.IP{
+		SubnetID: subnetID,
+	}
 	opts := portsbinding.CreateOpts{
 		HostID:  getHostName(),
 		DNSName: podHostname,
@@ -801,6 +833,7 @@ func (os *OpenStack) CreatePort(networkID, tenantID, portName, podHostname strin
 			AdminStateUp:   &adminStateUp,
 			TenantID:       tenantID,
 			DeviceID:       uuid.Generate().String(),
+			FixedIPs:       fixedIPs,
 			DeviceOwner:    fmt.Sprintf("compute:%s", getHostName()),
 			SecurityGroups: []string{securitygroup},
 		},
@@ -1490,7 +1523,7 @@ func (os *OpenStack) BuildPortName(podName, namespace, networkID string) string 
 }
 
 // Setup pod
-func (os *OpenStack) SetupPod(podName, namespace, podInfraContainerID string, network *provider.Network, containerRuntime string) error {
+func (os *OpenStack) SetupPod(podName, namespace, podInfraContainerID string, network *provider.Network, containerRuntime, subnetID string) error {
 	portName := os.BuildPortName(podName, namespace, network.Uid)
 
 	// get dns server ips
@@ -1513,7 +1546,7 @@ func (os *OpenStack) SetupPod(podName, namespace, podInfraContainerID string, ne
 		}
 
 		// Port not found, create one
-		portWithBinding, err := os.CreatePort(network.Uid, network.TenantID, portName, podHostname)
+		portWithBinding, err := os.CreatePort(network.Uid, network.TenantID, portName, podHostname, subnetID)
 		if err != nil {
 			glog.Errorf("CreatePort failed: %v", err)
 			return err
