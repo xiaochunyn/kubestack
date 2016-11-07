@@ -352,7 +352,7 @@ func (os *OpenStack) CreateNetwork(network *provider.Network) error {
 	osRouter, err := routers.Create(os.network, routerOpts).Extract()
 	if err != nil {
 		glog.Errorf("Create openstack router %s failed: %v", network.Name, err)
-		delErr := os.DeleteNetwork(network.Name)
+		delErr := os.DeleteNetwork(network.Uid)
 		if delErr != nil {
 			glog.Errorf("Delete openstack network %s failed: %v", network.Name, delErr)
 		}
@@ -382,7 +382,7 @@ func (os *OpenStack) CreateNetwork(network *provider.Network) error {
 		s, err := subnets.Create(os.network, subnetOpts).Extract()
 		if err != nil {
 			glog.Errorf("Create openstack subnet %s failed: %v", sub.Name, err)
-			delErr := os.DeleteNetwork(network.Name)
+			delErr := os.DeleteNetwork(network.Uid)
 			if delErr != nil {
 				glog.Errorf("Delete openstack network %s failed: %v", network.Name, delErr)
 			}
@@ -397,7 +397,7 @@ func (os *OpenStack) CreateNetwork(network *provider.Network) error {
 		_, err = routers.AddInterface(os.network, osRouter.ID, opts).Extract()
 		if err != nil {
 			glog.Errorf("Create openstack subnet %s failed: %v", sub.Name, err)
-			delErr := os.DeleteNetwork(network.Name)
+			delErr := os.DeleteNetwork(network.Uid)
 			if delErr != nil {
 				glog.Errorf("Delete openstack network %s failed: %v", network.Name, delErr)
 			}
@@ -445,7 +445,7 @@ func (os *OpenStack) getRouterByName(name string) (*routers.Router, error) {
 	return result, nil
 }
 
-// Delete network by networkName
+// Delete network by networkID
 func (os *OpenStack) DeleteNetwork(networkID string) error {
 	osNetwork, err := os.getOpenStackNetworkByID(networkID)
 	if err != nil {
@@ -627,6 +627,20 @@ func (os *OpenStack) DeleteSubnet(subnetID string, networkID string) error {
 		glog.Errorf("Get openstack network failed: %v", err)
 		return err
 	}
+	router, err := os.getRouterByName(osNetwork.Name)
+	if err != nil {
+		glog.Errorf("Get openstack router %s error: %v", osNetwork.Name, err)
+		return err
+	}
+	// remove routerinterface
+	if router != nil {
+		opts := routers.RemoveInterfaceOpts{SubnetID: subnetID}
+		_, err := routers.RemoveInterface(os.network, router.ID, opts).Extract()
+		if err != nil {
+			glog.Errorf("Get openstack router %s error: %v", osNetwork.Name, err)
+			return err
+		}
+	}
 	if subnet != nil {
 		// Delete subnet's ports
 		opts := ports.ListOpts{NetworkID: networkID}
@@ -658,30 +672,13 @@ func (os *OpenStack) DeleteSubnet(subnetID string, networkID string) error {
 			glog.Errorf("Delete ports error: %v", err)
 		}
 
-		router, err := os.getRouterByName(osNetwork.Name)
-		if err != nil {
-			glog.Errorf("Get openstack router %s error: %v", osNetwork.Name, err)
-			return err
-		}
-
 		// delete subnet
-		if router != nil {
-			opts := routers.RemoveInterfaceOpts{SubnetID: subnetID}
-			_, err := routers.RemoveInterface(os.network, router.ID, opts).Extract()
-			if err != nil {
-				glog.Errorf("Get openstack router %s error: %v", osNetwork.Name, err)
-				return err
-			}
-		}
-
 		err = subnets.Delete(os.network, subnet.Uid).ExtractErr()
 		if err != nil {
 			glog.Errorf("Delete openstack subnet %s error: %v", subnet, err)
 			return err
 		}
-
 	}
-
 	return nil
 }
 

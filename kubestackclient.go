@@ -43,7 +43,7 @@ type Networks interface {
 	// Update network
 	UpdateNetwork(network *types.Network) error
 	// Delete network by networkName
-	DeleteNetwork(networkName string) error
+	DeleteNetwork(networkID string) error
 }
 
 type Subnets interface {
@@ -371,7 +371,7 @@ func main() {
 	}
 	fmt.Println("%v", getNetworkResponse)
 
-	testNetName := "testnet2"
+	//testNetName := "testnet2"
 	/*var subnets []*types.Subnet
 	subnet := &types.Subnet{
 		Name:    "subnet1",
@@ -396,19 +396,26 @@ func main() {
 		}
 	}()*/
 
-	getNetworkResponse, err = neutron.Networks().GetNetwork(testNetName)
+	/*getNetworkResponse, err = neutron.Networks().GetNetwork(testNetName)
 	if err != nil {
 		glog.Errorf("NetworkProvider get network failed: ", err)
 		return
 	}
-	fmt.Println("%v", getNetworkResponse)
-	network := &types.Network{
+	fmt.Println("%v", getNetworkResponse)*/
+
+	/*network := &types.Network{
 		Uid:  "c2f383a7-1c80-4f71-b987-39214b1597a2",
 		Name: "testnet02",
 	}
 	err = neutron.Networks().UpdateNetwork(network)
 	if err != nil {
 		glog.Errorf("NetworkProvider update network failed: ", err)
+		return
+	}*/
+
+	err = neutron.Networks().DeleteNetwork("c2f383a7-1c80-4f71-b987-39214b1597a2")
+	if err != nil {
+		glog.Errorf("NetworkProvider delete network failed: ", err)
 		return
 	}
 
@@ -418,7 +425,7 @@ func main() {
 		return
 	}
 	fmt.Println("%v", listSubnetResponse)*/
-	// gateway can not update
+
 	/*subnet := &types.Subnet{
 		NetworkID: "c2f383a7-1c80-4f71-b987-39214b1597a2",
 		Name:      "subnet02",
@@ -429,7 +436,9 @@ func main() {
 	if err != nil {
 		glog.Errorf("NetworkProvider create subnets failed: ", err)
 		return
-	}*/
+	}
+
+	// gateway can not update
 	/*subnet := &types.Subnet{
 		Uid:  "1fcbfbc3-fd75-49e6-a981-d5c0ba595d7b",
 		Name: "subnet03",
@@ -439,7 +448,7 @@ func main() {
 		glog.Errorf("NetworkProvider create subnets failed: ", err)
 		return
 	}*/
-	/*err = neutron.Subnets().DeleteSubnet("141b5f1b-e2e4-4e89-a8d7-75f7758acb4d", "c084cb41-cf08-4d19-abb7-64b3d112baf2")
+	/*err = neutron.Subnets().DeleteSubnet("1fcbfbc3-fd75-49e6-a981-d5c0ba595d7b", "c2f383a7-1c80-4f71-b987-39214b1597a2")
 	if err != nil {
 		glog.Errorf("NetworkProvider delete subnets failed: ", err)
 		return
