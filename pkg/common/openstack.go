@@ -343,10 +343,6 @@ func (os *OpenStack) CreateNetwork(network *provider.Network) error {
 		return err
 	}
 	glog.V(2).Info("Create openstack network %s successed ", network.Name)
-	if len(network.Subnets) == 0 {
-		glog.V(2).Info("Subnets is null, exist ")
-		return nil
-	}
 	// create router
 	routerOpts := routers.CreateOpts{
 		Name:        network.Name,
@@ -363,6 +359,11 @@ func (os *OpenStack) CreateNetwork(network *provider.Network) error {
 		return err
 	}
 	glog.V(2).Info("Create openstack router %s successed ", osRouter.Name)
+	//if subnets is null ,exit
+	if len(network.Subnets) == 0 {
+		glog.V(2).Info("Subnets is null, exist ")
+		return nil
+	}
 	// create subnets and connect them to router
 	networkID := osNet.ID
 	network.Status = os.ToProviderStatus(osNet.Status)
