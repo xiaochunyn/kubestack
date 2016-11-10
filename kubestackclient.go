@@ -44,6 +44,8 @@ type Networks interface {
 	UpdateNetwork(network *types.Network) error
 	// Delete network by networkName
 	DeleteNetwork(networkID string) error
+	// List network by tenantID
+	ListNetworks(tenantID string) ([]*types.Network, error)
 }
 
 type Subnets interface {
@@ -210,6 +212,25 @@ func (r *NeutronProvider) DeleteNetwork(networkID string) error {
 	}
 
 	return nil
+}
+
+//List all Networks by tenantID
+func (r *NeutronProvider) ListNetworks(tenantID string) ([]*types.Network, error) {
+	resp, err := r.networkClient.ListNetworks(
+		context.Background(),
+		&types.ListNetworkRequest{
+			TenantID: tenantID,
+		},
+	)
+	if err != nil || resp.Error != "" {
+		if err == nil {
+			err = errors.New(resp.Error)
+		}
+		glog.Warningf("NetworkProvider list networks by tenantID %s failed: %v", tenantID, err)
+		return nil, err
+	}
+
+	return resp.Networks, nil
 }
 
 //List all subnets in the  network
@@ -413,11 +434,18 @@ func main() {
 		return
 	}*/
 
-	err = neutron.Networks().DeleteNetwork("c2f383a7-1c80-4f71-b987-39214b1597a2")
+	ListNetworkResponse, err := neutron.Networks().ListNetworks("414454afc37f4ff395d06e61167f8108")
+	if err != nil {
+		glog.Errorf("NetworkProvider list Networks failed: ", err)
+		return
+	}
+	fmt.Println("%v", ListNetworkResponse)
+
+	/*err = neutron.Networks().DeleteNetwork("c2f383a7-1c80-4f71-b987-39214b1597a2")
 	if err != nil {
 		glog.Errorf("NetworkProvider delete network failed: ", err)
 		return
-	}
+	}*/
 
 	/*listSubnetResponse, err := neutron.Subnets().ListSubnets("c084cb41-cf08-4d19-abb7-64b3d112baf2")
 	if err != nil {
