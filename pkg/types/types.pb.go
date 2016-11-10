@@ -20,6 +20,8 @@ It has these top-level messages:
 	CreateNetworkRequest
 	UpdateNetworkRequest
 	DeleteNetworkRequest
+	ListNetworkRequest
+	ListNetworkResponse
 	ListSubnetsRequest
 	ListSubnetsResponse
 	CreateSubnetRequest
@@ -199,6 +201,30 @@ type DeleteNetworkRequest struct {
 func (m *DeleteNetworkRequest) Reset()         { *m = DeleteNetworkRequest{} }
 func (m *DeleteNetworkRequest) String() string { return proto.CompactTextString(m) }
 func (*DeleteNetworkRequest) ProtoMessage()    {}
+
+type ListNetworkRequest struct {
+	TenantID string `protobuf:"bytes,1,opt,name=tenantID,proto3" json:"tenantID,omitempty"`
+}
+
+func (m *ListNetworkRequest) Reset()         { *m = ListNetworkRequest{} }
+func (m *ListNetworkRequest) String() string { return proto.CompactTextString(m) }
+func (*ListNetworkRequest) ProtoMessage()    {}
+
+type ListNetworkResponse struct {
+	Networks []*Network `protobuf:"bytes,1,rep,name=networks" json:"networks,omitempty"`
+	Error    string     `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (m *ListNetworkResponse) Reset()         { *m = ListNetworkResponse{} }
+func (m *ListNetworkResponse) String() string { return proto.CompactTextString(m) }
+func (*ListNetworkResponse) ProtoMessage()    {}
+
+func (m *ListNetworkResponse) GetNetworks() []*Network {
+	if m != nil {
+		return m.Networks
+	}
+	return nil
+}
 
 type ListSubnetsRequest struct {
 	NetworkID string `protobuf:"bytes,1,opt,name=networkID,proto3" json:"networkID,omitempty"`
@@ -487,6 +513,8 @@ func init() {
 	proto.RegisterType((*CreateNetworkRequest)(nil), "types.CreateNetworkRequest")
 	proto.RegisterType((*UpdateNetworkRequest)(nil), "types.UpdateNetworkRequest")
 	proto.RegisterType((*DeleteNetworkRequest)(nil), "types.DeleteNetworkRequest")
+	proto.RegisterType((*ListNetworkRequest)(nil), "types.ListNetworkRequest")
+	proto.RegisterType((*ListNetworkResponse)(nil), "types.ListNetworkResponse")
 	proto.RegisterType((*ListSubnetsRequest)(nil), "types.ListSubnetsRequest")
 	proto.RegisterType((*ListSubnetsResponse)(nil), "types.ListSubnetsResponse")
 	proto.RegisterType((*CreateSubnetRequest)(nil), "types.CreateSubnetRequest")
@@ -522,6 +550,7 @@ type NetworksClient interface {
 	CreateNetwork(ctx context.Context, in *CreateNetworkRequest, opts ...grpc.CallOption) (*CommonResponse, error)
 	UpdateNetwork(ctx context.Context, in *UpdateNetworkRequest, opts ...grpc.CallOption) (*CommonResponse, error)
 	DeleteNetwork(ctx context.Context, in *DeleteNetworkRequest, opts ...grpc.CallOption) (*CommonResponse, error)
+	ListNetworks(ctx context.Context, in *ListNetworkRequest, opts ...grpc.CallOption) (*ListNetworkResponse, error)
 }
 
 type networksClient struct {
@@ -586,6 +615,15 @@ func (c *networksClient) DeleteNetwork(ctx context.Context, in *DeleteNetworkReq
 	return out, nil
 }
 
+func (c *networksClient) ListNetworks(ctx context.Context, in *ListNetworkRequest, opts ...grpc.CallOption) (*ListNetworkResponse, error) {
+	out := new(ListNetworkResponse)
+	err := grpc.Invoke(ctx, "/types.Networks/ListNetworks", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Server API for Networks service
 
 type NetworksServer interface {
@@ -595,6 +633,7 @@ type NetworksServer interface {
 	CreateNetwork(context.Context, *CreateNetworkRequest) (*CommonResponse, error)
 	UpdateNetwork(context.Context, *UpdateNetworkRequest) (*CommonResponse, error)
 	DeleteNetwork(context.Context, *DeleteNetworkRequest) (*CommonResponse, error)
+	ListNetworks(context.Context, *ListNetworkRequest) (*ListNetworkResponse, error)
 }
 
 func RegisterNetworksServer(s *grpc.Server, srv NetworksServer) {
@@ -673,6 +712,18 @@ func _Networks_DeleteNetwork_Handler(srv interface{}, ctx context.Context, dec f
 	return out, nil
 }
 
+func _Networks_ListNetworks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(ListNetworkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(NetworksServer).ListNetworks(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 var _Networks_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "types.Networks",
 	HandlerType: (*NetworksServer)(nil),
@@ -700,6 +751,10 @@ var _Networks_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteNetwork",
 			Handler:    _Networks_DeleteNetwork_Handler,
+		},
+		{
+			MethodName: "ListNetworks",
+			Handler:    _Networks_ListNetworks_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},

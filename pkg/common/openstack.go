@@ -423,6 +423,34 @@ func (os *OpenStack) UpdateNetwork(network *provider.Network) error {
 	return nil
 }
 
+// List networks by tenentID
+func (os *OpenStack) ListNetworks(tenantID string) ([]*provider.Network, error) {
+	var results []*provider.Network
+	opts := networks.ListOpts{TenantID: tenantID}
+	pager := networks.List(os.network, opts)
+	err := pager.EachPage(func(page pagination.Page) (bool, error) {
+		networkList, err := networks.ExtractNetworks(page)
+		if err != nil {
+			glog.Errorf("Get openstack networks error: %v", err)
+			return false, err
+		}
+		for _, n := range networkList {
+			network, err := os.GetNetworkByID(n.ID)
+			if err != nil {
+				glog.Errorf("Get openstack subnet failed: %v", err)
+				return false, err
+			}
+			results = append(results, network)
+		}
+		return true, err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
 func (os *OpenStack) getRouterByName(name string) (*routers.Router, error) {
 	var result *routers.Router
 

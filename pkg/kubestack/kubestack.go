@@ -147,6 +147,25 @@ func (h *KubeHandler) DeleteNetwork(c context.Context, req *provider.DeleteNetwo
 	return &resp, nil
 }
 
+func (h *KubeHandler) ListNetworks(c context.Context, req *provider.ListNetworkRequest) (*provider.ListNetworkResponse, error) {
+	glog.V(4).Infof("ListNetworks with request %v", req.String())
+
+	resp := provider.ListNetworkResponse{}
+	var result []*provider.Network
+	var err error
+
+	result, err = h.driver.ListNetworks(req.TenantID)
+
+	if err != nil {
+		resp.Error = err.Error()
+	} else {
+		resp.Networks = result
+	}
+
+	glog.V(4).Infof("ListNetworks result %v", resp)
+	return &resp, nil
+}
+
 func (h *KubeHandler) ListSubnets(c context.Context, req *provider.ListSubnetsRequest) (*provider.ListSubnetsResponse, error) {
 	glog.V(4).Infof("ListSubnets with request %v", req.String())
 

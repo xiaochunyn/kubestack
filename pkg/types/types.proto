@@ -11,6 +11,7 @@ service Networks {
     rpc CreateNetwork(CreateNetworkRequest) returns (CommonResponse) {}
     rpc UpdateNetwork(UpdateNetworkRequest) returns (CommonResponse) {}
     rpc DeleteNetwork(DeleteNetworkRequest) returns (CommonResponse) {}
+    rpc ListNetworks(ListNetworkRequest) returns (ListNetworkResponse) {}
 }
 
 service Subnets {
@@ -97,6 +98,14 @@ message UpdateNetworkRequest {
 
 message DeleteNetworkRequest {
     string networkID = 1;
+}
+message ListNetworkRequest {
+	string tenantID = 1;
+}
+
+message ListNetworkResponse {
+	repeated Network networks = 1;
+	string error = 2;
 }
 
 message ListSubnetsRequest {
