@@ -196,6 +196,18 @@
 			"Rev": "014999f5572b5808c54194f610b49b2a2fd40765"
 		},
 		{
+			"ImportPath": "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/fwaas/firewalls",
+			"Rev": "014999f5572b5808c54194f610b49b2a2fd40765"
+		},
+		{
+			"ImportPath": "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/fwaas/policies",
+			"Rev": "014999f5572b5808c54194f610b49b2a2fd40765"
+		},
+		{
+			"ImportPath": "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/fwaas/rules",
+			"Rev": "014999f5572b5808c54194f610b49b2a2fd40765"
+		},
+		{
 			"ImportPath": "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/portsbinding",
 			"Rev": "014999f5572b5808c54194f610b49b2a2fd40765"
 		},
