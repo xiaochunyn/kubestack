@@ -104,7 +104,15 @@ func (p *OVSPlugin) SetupDockerInterface(podName, podInfraContainerID string, po
 		p.DestroyInterface(podName, podInfraContainerID, port, runtimeTypeDocker)
 		return err
 	}
-
+	_, err = os.Stat("/var/run/netns")
+	if os.IsNotExist(err) {
+		ret, err = exec.RunCommand("mkdir", "/var/run/netns")
+		if err != nil {
+			glog.Warningf("SetupInterface failed, ret:%s, error:%v", strings.Join(ret, "\n"), err)
+			p.DestroyInterface(podName, podInfraContainerID, port, runtimeTypeDocker)
+			return err
+		}
+	}
 	netns := strings.Trim(pid[0], "'")
 	ret, err = exec.RunCommand("ln", "-s", fmt.Sprintf("/proc/%s/ns/net", netns),
 		fmt.Sprintf("/var/run/netns/%s", netns))

@@ -17,8 +17,17 @@ service Networks {
 service Subnets {
     rpc ListSubnets(ListSubnetsRequest) returns (ListSubnetsResponse) {}
     rpc CreateSubnet(CreateSubnetRequest) returns (CommonResponse) {}
+    rpc GetSubnet(GetSubnetRequest) returns (GetSubnetResponse) {}
     rpc UpdateSubnet(UpdateSubnetRequest) returns (CommonResponse) {}
     rpc DeleteSubnet(DeleteSubnetRequest) returns (CommonResponse) {}
+}
+
+service Fwaas {
+	rpc ListRules(ListRulesRequest) returns (ListRulesResponse) {}
+	rpc GetRule(GetRuleRequest) returns (GetRuleResponse) {}
+	rpc CreateRule(CreateRuleRequest) returns (CommonResponse) {}
+	rpc UpdateRule(UpdateRuleRequest) returns (CommonResponse) {}
+	rpc DeleteRule(DeleteRuleRequest) returns (CommonResponse) {}
 }
 
 service LoadBalancers {
@@ -66,6 +75,22 @@ message Route {
 	string destinationCIDR = 3;
 }
 
+// Rule is a representaion of a Rule
+message Rule {
+	string name	=1;
+	string id		=2;
+	string tenantID	=3;
+	string policyID 	=4;
+	string protocol	=5;
+	string action	=6;
+	int32 iPVersion	=7;
+	string sourceIPAddress	=8;
+	string destinationIPAddress	=9;
+	string sourcePort	=10;
+	string destinationPort 	=11;
+	bool shared	=12;
+	bool enabled	=13;	
+}
 
 message Network {
     string name             = 1;
@@ -121,6 +146,15 @@ message CreateSubnetRequest {
 	Subnet subnet = 1;
 }
 
+message GetSubnetRequest {
+	string subnetID = 1;
+}
+
+message GetSubnetResponse {
+    Subnet subnet = 1;
+    string error    = 2;
+}
+
 message DeleteSubnetRequest {
 	string subnetID = 1;
 	string networkID = 2;
@@ -128,6 +162,36 @@ message DeleteSubnetRequest {
 
 message UpdateSubnetRequest {
 	Subnet subnet = 1;
+}
+
+message ListRulesRequest {
+	string tenantID = 1;
+}
+
+message ListRulesResponse {
+	repeated Rule rules = 1;
+	string error = 2;
+}
+
+message GetRuleRequest {
+   	 string ruleID   = 1;
+}
+
+message GetRuleResponse {
+    	Rule rule = 1;
+   	string error    = 2;
+}
+
+message CreateRuleRequest {
+	Rule rule = 1;
+}
+
+message DeleteRuleRequest {
+	string ruleID = 1;
+}
+
+message UpdateRuleRequest {
+	Rule rule = 1;
 }
 
 message GetLoadBalancerRequest {

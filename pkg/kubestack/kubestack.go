@@ -199,6 +199,23 @@ func (h *KubeHandler) CreateSubnet(c context.Context, req *provider.CreateSubnet
 	return &resp, nil
 }
 
+func (h *KubeHandler) GetSubnet(c context.Context, req *provider.GetSubnetRequest) (*provider.GetSubnetResponse, error) {
+	glog.V(4).Infof("GetSubnet with request %v", req.String())
+
+	resp := provider.GetSubnetResponse{}
+	var result *provider.Subnet
+	var err error
+	result, err = h.driver.GetSubnet(req.SubnetID)
+	if err != nil {
+		resp.Error = err.Error()
+	} else {
+		resp.Subnet = result
+	}
+
+	glog.V(4).Infof("GetSubnet result %v", resp)
+	return &resp, nil
+}
+
 func (h *KubeHandler) DeleteSubnet(c context.Context, req *provider.DeleteSubnetRequest) (*provider.CommonResponse, error) {
 	glog.V(4).Infof("DeleteSubnet with request %v", req.String())
 

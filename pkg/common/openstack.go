@@ -260,10 +260,12 @@ func (os *OpenStack) getProviderSubnet(osSubnetID string) (*provider.Subnet, err
 	}
 
 	providerSubnet := provider.Subnet{
+		NetworkID:  s.NetworkID,
 		Uid:        s.ID,
 		Cidr:       s.CIDR,
 		Gateway:    s.GatewayIP,
 		Name:       s.Name,
+		Tenantid:   s.TenantID,
 		Dnsservers: s.DNSNameservers,
 		Routes:     routes,
 	}
@@ -641,6 +643,17 @@ func (os *OpenStack) CreateSubnet(subnet *provider.Subnet) error {
 	glog.V(2).Info("router %s has added to subnet %s ", osRouter.Name, subnet.Name)
 
 	return nil
+}
+
+// Get subnet by subnetID
+func (os *OpenStack) GetSubnet(subnetID string) (*provider.Subnet, error) {
+	osSubnet, err := os.getProviderSubnet(subnetID)
+	if err != nil {
+		glog.Errorf("Get openstack subnet failed: %v", err)
+		return nil, err
+	}
+
+	return osSubnet, nil
 }
 
 // Delete a subnet from a network
