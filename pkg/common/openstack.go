@@ -31,6 +31,9 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/identity/v2/tenants"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/fwaas/firewalls"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/fwaas/policies"
+	fwrules "github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/fwaas/rules"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/floatingips"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/layer3/routers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/lbaas/members"
@@ -361,6 +364,61 @@ func (os *OpenStack) CreateNetwork(network *provider.Network) error {
 		return err
 	}
 	glog.V(2).Info("Create openstack router %s successed ", osRouter.Name)
+	//create firewall
+	ruleOpts := fwrules.CreateOpts{
+		TenantID:    network.TenantID,
+		Protocol:    "tcp",
+		Description: "used for subnets connection",
+		Name:        network.Name,
+		Action:      "allow",
+	}
+	osRule, err := fwrules.Create(os.network, ruleOpts).Extract()
+	if err != nil {
+		glog.Errorf("Create openstack firewall's rule %s failed: %v", network.Name, err)
+		delErr := os.DeleteNetwork(network.Uid)
+		if delErr != nil {
+			glog.Errorf("Delete openstack network %s failed: %v", network.Name, delErr)
+		}
+		return err
+	}
+	policyOpts := policies.CreateOpts{
+		TenantID:    network.TenantID,
+		Name:        network.Name,
+		Description: "used for subnets connection",
+		Shared:      gophercloud.Disabled,
+		Audited:     gophercloud.Disabled,
+		Rules: []string{
+			osRule.ID,
+		},
+	}
+	osPolicy, err := policies.Create(os.network, policyOpts).Extract()
+	if err != nil {
+		glog.Errorf("Create openstack firewall's policy %s failed: %v", network.Name, err)
+		delErr := os.DeleteNetwork(network.Uid)
+		if delErr != nil {
+			glog.Errorf("Delete openstack network %s failed: %v", network.Name, delErr)
+		}
+		return err
+	}
+	firewallOpts := firewalls.CreateOpts{
+		TenantID:     network.TenantID,
+		Name:         network.Name,
+		Description:  "used for subnets connection",
+		AdminStateUp: gophercloud.Enabled,
+		PolicyID:     osPolicy.ID,
+		Router_ids: []string{
+			osRouter.ID,
+		},
+	}
+	_, err = firewalls.Create(os.network, firewallOpts).Extract()
+	if err != nil {
+		glog.Errorf("Create openstack firewall %s failed: %v", network.Name, err)
+		delErr := os.DeleteNetwork(network.Uid)
+		if delErr != nil {
+			glog.Errorf("Delete openstack network %s failed: %v", network.Name, delErr)
+		}
+		return err
+	}
 	//if subnets is null ,exit
 	if len(network.Subnets) == 0 {
 		glog.V(2).Info("Subnets is null, exist ")
@@ -428,7 +486,12 @@ func (os *OpenStack) UpdateNetwork(network *provider.Network) error {
 // List networks by tenentID
 func (os *OpenStack) ListNetworks(tenantID string) ([]*provider.Network, error) {
 	var results []*provider.Network
-	opts := networks.ListOpts{TenantID: tenantID}
+	var opts networks.ListOpts
+	if tenantID == "" {
+		opts = networks.ListOpts{}
+	} else {
+		opts = networks.ListOpts{TenantID: tenantID}
+	}
 	pager := networks.List(os.network, opts)
 	err := pager.EachPage(func(page pagination.Page) (bool, error) {
 		networkList, err := networks.ExtractNetworks(page)
@@ -453,10 +516,13 @@ func (os *OpenStack) ListNetworks(tenantID string) ([]*provider.Network, error) 
 	return results, nil
 }
 
-func (os *OpenStack) getRouterByName(name string) (*routers.Router, error) {
+func (os *OpenStack) getRouterByName(name, tenantID string) (*routers.Router, error) {
 	var result *routers.Router
 
-	opts := routers.ListOpts{Name: name}
+	opts := routers.ListOpts{
+		Name:     name,
+		TenantID: tenantID,
+	}
 	pager := routers.List(os.network, opts)
 	err := pager.EachPage(func(page pagination.Page) (bool, error) {
 		routerList, e := routers.ExtractRouters(page)
@@ -511,7 +577,7 @@ func (os *OpenStack) DeleteNetwork(networkID string) error {
 			glog.Errorf("Delete ports error: %v", err)
 		}
 
-		router, err := os.getRouterByName(osNetwork.Name)
+		router, err := os.getRouterByName(osNetwork.Name, osNetwork.TenantID)
 		if err != nil {
 			glog.Errorf("Get openstack router %s error: %v", osNetwork.Name, err)
 			return err
@@ -626,7 +692,7 @@ func (os *OpenStack) CreateSubnet(subnet *provider.Subnet) error {
 		glog.Errorf("Cet openstack network %s failed: %v", subnet.NetworkID, err)
 		return err
 	}
-	osRouter, err := os.getRouterByName(network.Name)
+	osRouter, err := os.getRouterByName(network.Name, network.TenantID)
 	if err != nil {
 		glog.Errorf("Cet openstack router failed: %v", err)
 		return err
@@ -668,7 +734,7 @@ func (os *OpenStack) DeleteSubnet(subnetID string, networkID string) error {
 		glog.Errorf("Get openstack network failed: %v", err)
 		return err
 	}
-	router, err := os.getRouterByName(osNetwork.Name)
+	router, err := os.getRouterByName(osNetwork.Name, osNetwork.TenantID)
 	if err != nil {
 		glog.Errorf("Get openstack router %s error: %v", osNetwork.Name, err)
 		return err

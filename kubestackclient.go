@@ -392,7 +392,7 @@ func main() {
 	}
 	fmt.Println("%v", getNetworkResponse)
 
-	testNetName := "testnet2"
+	testNetName := "testnet3"
 	var subnets []*types.Subnet
 	subnet := &types.Subnet{
 		Name:    "subnet1",
@@ -442,10 +442,11 @@ func main() {
 	fmt.Println("%v", ListNetworkResponse)*/
 
 	/*err = neutron.Networks().DeleteNetwork("488cfc23-0852-4853-bf1b-f17d341cde10")
+	fmt.Println("%v", err)
 	if err != nil {
 		glog.Errorf("NetworkProvider delete network failed: ", err)
 		return
-	}*/
+	}
 
 	/*listSubnetResponse, err := neutron.Subnets().ListSubnets("c084cb41-cf08-4d19-abb7-64b3d112baf2")
 	if err != nil {
