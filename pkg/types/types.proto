@@ -20,6 +20,7 @@ service Subnets {
     rpc GetSubnet(GetSubnetRequest) returns (GetSubnetResponse) {}
     rpc UpdateSubnet(UpdateSubnetRequest) returns (CommonResponse) {}
     rpc DeleteSubnet(DeleteSubnetRequest) returns (CommonResponse) {}
+    rpc ConnectSubnets(ConnectSubnetsRequest) returns (CommonResponse) {}
 }
 
 service Fwaas {
@@ -162,6 +163,11 @@ message DeleteSubnetRequest {
 
 message UpdateSubnetRequest {
 	Subnet subnet = 1;
+}
+
+message ConnectSubnetsRequest {
+	Subnet subnet1 = 1;
+	Subnet subnet2 = 2;
 }
 
 message ListRulesRequest {

@@ -392,8 +392,8 @@ func main() {
 	}
 	fmt.Println("%v", getNetworkResponse)
 
-	testNetName := "testnet3"
-	var subnets []*types.Subnet
+	testNetName := "testnet4"
+	/*var subnets []*types.Subnet
 	subnet := &types.Subnet{
 		Name:    "subnet1",
 		Cidr:    "192.168.11.0/24",
@@ -417,12 +417,12 @@ func main() {
 		}
 	}()*/
 
-	/*getNetworkResponse, err = neutron.Networks().GetNetwork(testNetName)
+	getNetworkResponse, err = neutron.Networks().GetNetwork(testNetName)
 	if err != nil {
 		glog.Errorf("NetworkProvider get network failed: ", err)
 		return
 	}
-	fmt.Println("%v", getNetworkResponse)*/
+	fmt.Println("%v", getNetworkResponse)
 
 	/*network := &types.Network{
 		Uid:  "c2f383a7-1c80-4f71-b987-39214b1597a2",

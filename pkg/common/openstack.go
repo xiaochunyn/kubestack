@@ -336,6 +336,11 @@ func (os *OpenStack) ToProviderStatus(status string) string {
 
 // Create network
 func (os *OpenStack) CreateNetwork(network *provider.Network) error {
+	osNetwork, _ := os.getOpenStackNetworkByName(network.Name)
+	if osNetwork != nil {
+		err := errors.New("this network has existed")
+		return err
+	}
 	// create network
 	opts := networks.CreateOpts{
 		Name:         network.Name,
@@ -791,13 +796,79 @@ func (os *OpenStack) DeleteSubnet(subnetID string, networkID string) error {
 
 //Update subnet
 func (os *OpenStack) UpdateSubnet(subnet *provider.Subnet) error {
-	//TODO (heartlock)update subnet
 	opts := subnets.UpdateOpts{
 		Name:           subnet.Name,
 		GatewayIP:      subnet.Gateway,
 		DNSNameservers: subnet.Dnsservers,
 	}
 	_, err := subnets.Update(os.network, subnet.Uid, opts).Extract()
+	if err != nil {
+		glog.Errorf("Update openstack subnet %s failed: %v", subnet.Name, err)
+		return err
+	}
+	return nil
+}
+
+//Connect subnets
+func (os *OpenStack) ConnectSubnets(subnet1, subnet2 *provider.Subnet) error {
+	if subnet1.NetworkID != subnet2.NetworkID {
+		err := errors.New("the two subnet must under the same network")
+		return err
+	}
+	ruleOpts := fwrules.CreateOpts{
+		TenantID:    subnet1.Tenantid,
+		Protocol:    "any",
+		Description: "used for subnets connection",
+		Name:        network.Name,
+		Action:      "allow",
+	}
+	osRule, err := fwrules.Create(os.network, ruleOpts).Extract()
+	if err != nil {
+		glog.Errorf("Create openstack firewall's rule %s failed: %v", network.Name, err)
+		delErr := os.DeleteNetwork(network.Uid)
+		if delErr != nil {
+			glog.Errorf("Delete openstack network %s failed: %v", network.Name, delErr)
+		}
+		return err
+	}
+	policyOpts := policies.CreateOpts{
+		TenantID:    network.TenantID,
+		Name:        network.Name,
+		Description: "used for subnets connection",
+		Shared:      gophercloud.Disabled,
+		Audited:     gophercloud.Disabled,
+		Rules: []string{
+			osRule.ID,
+		},
+	}
+	osPolicy, err := policies.Create(os.network, policyOpts).Extract()
+	if err != nil {
+		glog.Errorf("Create openstack firewall's policy %s failed: %v", network.Name, err)
+		delErr := os.DeleteNetwork(network.Uid)
+		if delErr != nil {
+			glog.Errorf("Delete openstack network %s failed: %v", network.Name, delErr)
+		}
+		return err
+	}
+	firewallOpts := firewalls.CreateOpts{
+		TenantID:     network.TenantID,
+		Name:         network.Name,
+		Description:  "used for subnets connection",
+		AdminStateUp: gophercloud.Enabled,
+		PolicyID:     osPolicy.ID,
+		Router_ids: []string{
+			osRouter.ID,
+		},
+	}
+	_, err = firewalls.Create(os.network, firewallOpts).Extract()
+	if err != nil {
+		glog.Errorf("Create openstack firewall %s failed: %v", network.Name, err)
+		delErr := os.DeleteNetwork(network.Uid)
+		if delErr != nil {
+			glog.Errorf("Delete openstack network %s failed: %v", network.Name, delErr)
+		}
+		return err
+	}
 	if err != nil {
 		glog.Errorf("Update openstack subnet %s failed: %v", subnet.Name, err)
 		return err

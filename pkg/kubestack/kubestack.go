@@ -242,6 +242,19 @@ func (h *KubeHandler) UpdateSubnet(c context.Context, req *provider.UpdateSubnet
 	return &resp, nil
 }
 
+func (h *KubeHandler) ConnectSubnets(c context.Context, req *provider.ConnectSubnetsRequest) (*provider.CommonResponse, error) {
+	glog.V(4).Infof("ConnectSubnets with request %v", req.String())
+
+	resp := provider.CommonResponse{}
+	err := h.driver.ConnectSubnets(req.Subnet1, req.Subnet2)
+	if err != nil {
+		resp.Error = err.Error()
+	}
+
+	glog.V(4).Infof("ConnectSubnets result %v", resp)
+	return &resp, nil
+}
+
 func (h *KubeHandler) GetLoadBalancer(c context.Context, req *provider.GetLoadBalancerRequest) (*provider.GetLoadBalancerResponse, error) {
 	resp := provider.GetLoadBalancerResponse{}
 	lb, err := h.driver.GetLoadBalancer(req.Name)
