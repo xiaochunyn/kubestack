@@ -91,8 +91,55 @@ type CreateOpts struct {
 }
 
 // ToRuleCreateMap casts a CreateOpts struct to a map.
-func (opts CreateOpts) ToRuleCreateMap() (map[string]interface{}, error) {
+/*func (opts CreateOpts) ToRuleCreateMap() (map[string]interface{}, error) {
 	return gophercloud.BuildRequestBody(opts, "firewall_rule")
+}*/
+
+// ToRuleCreateMap casts a CreateOpts struct to a map.
+func (opts CreateOpts) ToRuleCreateMap() (map[string]interface{}, error) {
+	if opts.Action == "" {
+		return nil, errActionRequired
+	}
+
+	r := make(map[string]interface{})
+	if opts.Protocol == "" {
+		r["protocol"] = nil
+	} else {
+		r["protocol"] = opts.Protocol
+	}
+	r["action"] = opts.Action
+	if opts.TenantID != "" {
+		r["tenant_id"] = opts.TenantID
+	}
+	if opts.Name != "" {
+		r["name"] = opts.Name
+	}
+	if opts.Description != "" {
+		r["description"] = opts.Description
+	}
+	if opts.IPVersion != 0 {
+		r["ip_version"] = opts.IPVersion
+	}
+	if opts.SourceIPAddress != "" {
+		r["source_ip_address"] = opts.SourceIPAddress
+	}
+	if opts.DestinationIPAddress != "" {
+		r["destination_ip_address"] = opts.DestinationIPAddress
+	}
+	if opts.SourcePort != "" {
+		r["source_port"] = opts.SourcePort
+	}
+	if opts.DestinationPort != "" {
+		r["destination_port"] = opts.DestinationPort
+	}
+	if opts.Shared != nil {
+		r["shared"] = *opts.Shared
+	}
+	if opts.Enabled != nil {
+		r["enabled"] = *opts.Enabled
+	}
+
+	return map[string]interface{}{"firewall_rule": r}, nil
 }
 
 // Create accepts a CreateOpts struct and uses the values to create a new firewall rule
