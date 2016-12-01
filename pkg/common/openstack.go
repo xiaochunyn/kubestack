@@ -373,7 +373,7 @@ func (os *OpenStack) CreateNetwork(network *provider.Network) error {
 	ruleOpts := fwrules.CreateOpts{
 		TenantID:    network.TenantID,
 		Protocol:    "tcp",
-		Description: "used for subnets connection",
+		Description: "used for subnets isolation",
 		Name:        network.Name,
 		Action:      "allow",
 	}
@@ -389,7 +389,7 @@ func (os *OpenStack) CreateNetwork(network *provider.Network) error {
 	policyOpts := policies.CreateOpts{
 		TenantID:    network.TenantID,
 		Name:        network.Name,
-		Description: "used for subnets connection",
+		Description: "used for subnets isolation and connection",
 		Shared:      gophercloud.Disabled,
 		Audited:     gophercloud.Disabled,
 		Rules: []string{
@@ -408,7 +408,7 @@ func (os *OpenStack) CreateNetwork(network *provider.Network) error {
 	firewallOpts := firewalls.CreateOpts{
 		TenantID:     network.TenantID,
 		Name:         network.Name,
-		Description:  "used for subnets connection",
+		Description:  "used for subnets isolation and connection",
 		AdminStateUp: gophercloud.Enabled,
 		PolicyID:     osPolicy.ID,
 		Router_ids: []string{
@@ -587,6 +587,38 @@ func (os *OpenStack) DeleteNetwork(networkID string) error {
 			glog.Errorf("Get openstack router %s error: %v", osNetwork.Name, err)
 			return err
 		}
+		//delete firewall
+		var osFwID string
+		var osPolicyID string
+		firewalls.List(os.network, firewalls.ListOpts{TenantID: osNetwork.TenantID, Name: osNetwork.Name}).EachPage(func(page pagination.Page) (bool, error) {
+			osFw, err := firewalls.ExtractFirewalls(page)
+			if err != nil {
+				glog.Errorf("Failed to extract members: %v", err)
+				return false, err
+			}
+			osFwID = osFw[0].ID
+			osPolicyID = osFw[0].PolicyID
+			return true, nil
+		})
+		resfirewall := firewalls.Delete(os.network, osFwID)
+		glog.V(2).Info("Delete openstack firewall %s successed: %v", osNetwork.Name, resfirewall)
+		policy, err := policies.Get(os.network, osPolicyID).Extract()
+		if err != nil {
+			glog.Errorf("Get openstack policy %s error: %v", osNetwork.Name, err)
+			return err
+		}
+		//delete policy
+		fw, _ := firewalls.Get(os.network, osFwID).Extract()
+		for fw != nil {
+			fw, _ = firewalls.Get(os.network, osFwID).Extract()
+		}
+		respolicy := policies.Delete(os.network, osPolicyID)
+		glog.V(2).Info("Delete openstack firewall policy %s successed: %v", osNetwork.Name, respolicy)
+		//delete rule
+		for _, ruleID := range policy.Rules {
+			res := fwrules.Delete(os.network, ruleID)
+			glog.V(2).Info("Delete openstack firewall ruleID: %s successed: %v", ruleID, res)
+		}
 
 		// delete all subnets
 		for _, subnet := range osNetwork.Subnets {
@@ -744,6 +776,60 @@ func (os *OpenStack) DeleteSubnet(subnetID string, networkID string) error {
 		glog.Errorf("Get openstack router %s error: %v", osNetwork.Name, err)
 		return err
 	}
+	// remove firewall rules
+	ConnectRuleNum := 0
+	var delRule []string
+	fwrules.List(os.network, fwrules.ListOpts{TenantID: subnet.Tenantid}).EachPage(func(page pagination.Page) (bool, error) {
+		osRules, err := fwrules.ExtractRules(page)
+		if err != nil {
+			glog.Errorf("Failed to extract members: %v", err)
+			return false, err
+		}
+		for _, rule := range osRules {
+			str := strings.Split(rule.Name, "_")
+			if len(str) == 3 && str[0] == subnet.Tenantid && (str[1] == subnet.Name || str[2] == subnet.Name) {
+				delRule = append(delRule, rule.ID)
+				ConnectRuleNum++
+			}
+		}
+		return true, nil
+	})
+	if ConnectRuleNum != 0 {
+		var osPolicy policies.Policy
+		policies.List(os.network, policies.ListOpts{TenantID: subnet.Tenantid}).EachPage(func(page pagination.Page) (bool, error) {
+			osPolices, err := policies.ExtractPolicies(page)
+			if err != nil {
+				glog.Errorf("Failed to extract members: %v", err)
+				return false, err
+			}
+			for _, osPolicy = range osPolices {
+				if osPolicy.Name == osNetwork.Name {
+					break
+				}
+			}
+			return true, nil
+		})
+		var updateRules []string
+		for i, osrule := range osPolicy.Rules {
+			for _, delrule := range delRule {
+				if osrule == delrule {
+					updateRules = append(osPolicy.Rules[:i], osPolicy.Rules[i+1:]...)
+				}
+			}
+		}
+		options := policies.UpdateOpts{
+			Rules: updateRules,
+		}
+		_, err = policies.Update(os.network, osPolicy.ID, options).Extract()
+		if err != nil {
+			glog.Errorf("Failed to Update policy: %v", err)
+			return err
+		}
+		for _, ruleID := range delRule {
+			res := fwrules.Delete(os.network, ruleID)
+			glog.V(2).Info("Delete openstack firewall rule %s successed: %v", ruleID, res)
+		}
+	}
 	// remove routerinterface
 	if router != nil {
 		opts := routers.RemoveInterfaceOpts{SubnetID: subnetID}
@@ -815,62 +901,124 @@ func (os *OpenStack) ConnectSubnets(subnet1, subnet2 *provider.Subnet) error {
 		err := errors.New("the two subnet must under the same network")
 		return err
 	}
-	ruleOpts := fwrules.CreateOpts{
-		TenantID:    subnet1.Tenantid,
-		Protocol:    "any",
-		Description: "used for subnets connection",
-		Name:        network.Name,
-		Action:      "allow",
+	rulename1 := subnet1.NetworkID + "_" + subnet1.Name + "_" + subnet2.Name
+	ruleOpts1 := fwrules.CreateOpts{
+		TenantID:             subnet1.Tenantid,
+		Protocol:             "",
+		Description:          subnet1.Uid,
+		SourceIPAddress:      subnet1.Cidr,
+		DestinationIPAddress: subnet2.Cidr,
+		Name:                 rulename1,
+		Action:               "allow",
 	}
-	osRule, err := fwrules.Create(os.network, ruleOpts).Extract()
+	osRule1, err := fwrules.Create(os.network, ruleOpts1).Extract()
 	if err != nil {
-		glog.Errorf("Create openstack firewall's rule %s failed: %v", network.Name, err)
-		delErr := os.DeleteNetwork(network.Uid)
-		if delErr != nil {
-			glog.Errorf("Delete openstack network %s failed: %v", network.Name, delErr)
-		}
+		glog.Errorf("Create openstack firewall's rule %s failed: %v", rulename1, err)
 		return err
 	}
-	policyOpts := policies.CreateOpts{
-		TenantID:    network.TenantID,
-		Name:        network.Name,
-		Description: "used for subnets connection",
-		Shared:      gophercloud.Disabled,
-		Audited:     gophercloud.Disabled,
-		Rules: []string{
-			osRule.ID,
-		},
+	rulename2 := subnet1.NetworkID + "_" + subnet2.Name + "_" + subnet1.Name
+	ruleOpts2 := fwrules.CreateOpts{
+		TenantID:             subnet2.Tenantid,
+		Protocol:             "",
+		Description:          subnet2.Uid,
+		SourceIPAddress:      subnet2.Cidr,
+		DestinationIPAddress: subnet1.Cidr,
+		Name:                 rulename2,
+		Action:               "allow",
 	}
-	osPolicy, err := policies.Create(os.network, policyOpts).Extract()
+	osRule2, err := fwrules.Create(os.network, ruleOpts2).Extract()
 	if err != nil {
-		glog.Errorf("Create openstack firewall's policy %s failed: %v", network.Name, err)
-		delErr := os.DeleteNetwork(network.Uid)
-		if delErr != nil {
-			glog.Errorf("Delete openstack network %s failed: %v", network.Name, delErr)
-		}
+		glog.Errorf("Create openstack firewall's rule %s failed: %v", rulename2, err)
 		return err
 	}
-	firewallOpts := firewalls.CreateOpts{
-		TenantID:     network.TenantID,
-		Name:         network.Name,
-		Description:  "used for subnets connection",
-		AdminStateUp: gophercloud.Enabled,
-		PolicyID:     osPolicy.ID,
-		Router_ids: []string{
-			osRouter.ID,
-		},
-	}
-	_, err = firewalls.Create(os.network, firewallOpts).Extract()
+
+	osNetwork, err := os.getOpenStackNetworkByID(subnet1.NetworkID)
 	if err != nil {
-		glog.Errorf("Create openstack firewall %s failed: %v", network.Name, err)
-		delErr := os.DeleteNetwork(network.Uid)
-		if delErr != nil {
-			glog.Errorf("Delete openstack network %s failed: %v", network.Name, delErr)
-		}
+		glog.Errorf("getOpenStackNetworkByID() failed: %v", err)
 		return err
 	}
+	var osPolicy policies.Policy
+	policies.List(os.network, policies.ListOpts{Name: osNetwork.Name}).EachPage(func(page pagination.Page) (bool, error) {
+		osPolices, err := policies.ExtractPolicies(page)
+		if err != nil {
+			glog.Errorf("Failed to extract members: %v", err)
+			return false, err
+		}
+		osPolicy = osPolices[0]
+		return true, nil
+	})
+	osPolicy.Rules = append(osPolicy.Rules, osRule1.ID)
+	osPolicy.Rules = append(osPolicy.Rules, osRule2.ID)
+	policyOpts := policies.UpdateOpts{
+		Rules: osPolicy.Rules,
+	}
+	_, err = policies.Update(os.network, osPolicy.ID, policyOpts).Extract()
 	if err != nil {
-		glog.Errorf("Update openstack subnet %s failed: %v", subnet.Name, err)
+		glog.Errorf("openstack firewall's policy: %s add rules: %s %s failed: %v", osNetwork.Name, rulename1, rulename2, err)
+		return err
+	}
+	return nil
+}
+
+//Disconnect subnets
+func (os *OpenStack) DisconnectSubnets(subnet1, subnet2 *provider.Subnet) error {
+	osNetwork, err := os.getOpenStackNetworkByID(subnet1.NetworkID)
+	if err != nil {
+		glog.Errorf("Get openstack network failed: %v", err)
+		return err
+	}
+	var osPolicy policies.Policy
+	policies.List(os.network, policies.ListOpts{TenantID: subnet1.Tenantid}).EachPage(func(page pagination.Page) (bool, error) {
+		osPolices, err := policies.ExtractPolicies(page)
+		if err != nil {
+			glog.Errorf("Failed to extract members: %v", err)
+			return false, err
+		}
+		for _, osPolicy = range osPolices {
+			if osPolicy.Name == osNetwork.Name {
+				break
+			}
+		}
+		return true, nil
+	})
+
+	var delRule1, delRule2 string
+	fwrules.List(os.network, fwrules.ListOpts{TenantID: subnet1.Tenantid}).EachPage(func(page pagination.Page) (bool, error) {
+		osRules, err := fwrules.ExtractRules(page)
+		if err != nil {
+			glog.Errorf("Failed to extract members: %v", err)
+			return false, err
+		}
+		rulename1 := subnet1.NetworkID + "_" + subnet1.Name + "_" + subnet2.Name
+		rulename2 := subnet1.NetworkID + "_" + subnet2.Name + "_" + subnet1.Name
+		i := 0
+		for _, rule := range osRules {
+			if rule.Name == rulename1 {
+				delRule1 = rule.ID
+				i++
+			}
+			if rule.Name == rulename2 {
+				delRule2 = rule.ID
+				i++
+			}
+			if i == 2 {
+				break
+			}
+		}
+		return true, nil
+	})
+	var updateRules []string
+	for i, delrule := range osPolicy.Rules {
+		if delrule == delRule1 || delrule == delRule2 {
+			updateRules = append(osPolicy.Rules[:i], osPolicy.Rules[i+1:]...)
+		}
+	}
+	options := policies.UpdateOpts{
+		Rules: updateRules,
+	}
+	_, err = policies.Update(os.network, osPolicy.ID, options).Extract()
+	if err != nil {
+		glog.Errorf("Failed to Update policy: %v", err)
 		return err
 	}
 	return nil
@@ -1001,8 +1149,8 @@ func (os *OpenStack) CreatePort(networkID, tenantID, portName, podHostname, subn
 		SubnetID: subnetID,
 	}
 	opts := portsbinding.CreateOpts{
-		HostID:  getHostName(),
-		DNSName: podHostname,
+		HostID: getHostName(),
+		//DNSName: podHostname,
 		CreateOptsBuilder: ports.CreateOpts{
 			NetworkID:      networkID,
 			Name:           portName,

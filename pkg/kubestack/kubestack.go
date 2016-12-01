@@ -255,6 +255,18 @@ func (h *KubeHandler) ConnectSubnets(c context.Context, req *provider.ConnectSub
 	return &resp, nil
 }
 
+func (h *KubeHandler) DisconnectSubnets(c context.Context, req *provider.DisconnectSubnetsRequest) (*provider.CommonResponse, error) {
+	glog.V(4).Infof("DisconnectSubnets with request %v", req.String())
+
+	resp := provider.CommonResponse{}
+	err := h.driver.DisconnectSubnets(req.Subnet1, req.Subnet2)
+	if err != nil {
+		resp.Error = err.Error()
+	}
+	glog.V(4).Infof("DisconnectSubnets result %v", resp)
+	return &resp, nil
+}
+
 func (h *KubeHandler) GetLoadBalancer(c context.Context, req *provider.GetLoadBalancerRequest) (*provider.GetLoadBalancerResponse, error) {
 	resp := provider.GetLoadBalancerResponse{}
 	lb, err := h.driver.GetLoadBalancer(req.Name)
