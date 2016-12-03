@@ -55,6 +55,7 @@ type Subnets interface {
 	UpdateSubnet(subnet *types.Subnet) error
 	ConnectSubnets(subnet1, subnet2 *types.Subnet) error
 	DisconnectSubnets(subnet1, subnet2 *types.Subnet) error
+	GetRouterNS(subnetID string) (string, error)
 }
 
 type NeutronProvider struct {
@@ -332,6 +333,29 @@ func (r *NeutronProvider) DisconnectSubnets(subnet1, subnet2 *types.Subnet) erro
 	return nil
 }
 
+// Get routerNS
+func (r *NeutronProvider) GetRouterNS(subnetID string) (string, error) {
+	if subnetID == "" {
+		return "", errors.New("subnetID is null")
+	}
+
+	resp, err := r.subnetClient.GetRouterNS(
+		context.Background(),
+		&types.GetRouterNSRequest{
+			SubnetID: subnetID,
+		},
+	)
+	if err != nil || resp.Error != "" {
+		if err == nil {
+			err = errors.New(resp.Error)
+		}
+		glog.Warningf("SubnetProvider get routerNS failed: %v", err)
+		return "", err
+	}
+
+	return resp.RouterNS, nil
+}
+
 //Update subnet
 func (r *NeutronProvider) UpdateSubnet(subnet *types.Subnet) error {
 	resp, err := r.subnetClient.UpdateSubnet(
@@ -434,7 +458,7 @@ func main() {
 	}
 	fmt.Println("%v", getNetworkResponse)
 
-	testNetName := "testnet3"
+	/*testNetName := "testnet3"
 	var subnets []*types.Subnet
 	subnet := &types.Subnet{
 		Name:    "net3-sub1",
@@ -470,7 +494,14 @@ func main() {
 		glog.Errorf("NetworkProvider get network failed: ", err)
 		return
 	}
-	fmt.Println("%v", getNetworkResponse)
+	fmt.Println("%v", getNetworkResponse)*/
+
+	routerNS, err := neutron.Subnets().GetRouterNS("71e4e761-731b-4870-9f25-72e6e00d7689")
+	if err != nil {
+		glog.Errorf("Provider get routerNS failed: ", err)
+		return
+	}
+	fmt.Println("%s", routerNS)
 
 	/*network := &types.Network{
 		Uid:  "c2f383a7-1c80-4f71-b987-39214b1597a2",

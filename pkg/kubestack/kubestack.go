@@ -267,6 +267,20 @@ func (h *KubeHandler) DisconnectSubnets(c context.Context, req *provider.Disconn
 	return &resp, nil
 }
 
+func (h *KubeHandler) GetRouterNS(c context.Context, req *provider.GetRouterNSRequest) (*provider.GetRouterNSResponse, error) {
+	glog.V(4).Infof("GetRouterNS with request %v", req.String())
+
+	resp := provider.GetRouterNSResponse{}
+	result, err := h.driver.GetRouterNS(req.SubnetID)
+	if err != nil {
+		resp.Error = err.Error()
+	} else {
+		resp.RouterNS = result
+	}
+	glog.V(4).Infof("GetRouterNS result %v", resp)
+	return &resp, nil
+}
+
 func (h *KubeHandler) GetLoadBalancer(c context.Context, req *provider.GetLoadBalancerRequest) (*provider.GetLoadBalancerResponse, error) {
 	resp := provider.GetLoadBalancerResponse{}
 	lb, err := h.driver.GetLoadBalancer(req.Name)

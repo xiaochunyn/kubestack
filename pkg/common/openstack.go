@@ -1024,6 +1024,26 @@ func (os *OpenStack) DisconnectSubnets(subnet1, subnet2 *provider.Subnet) error 
 	return nil
 }
 
+// Get subnet by subnetID
+func (os *OpenStack) GetRouterNS(subnetID string) (string, error) {
+	subnet, err := os.getProviderSubnet(subnetID)
+	if err != nil {
+		glog.Errorf("Get openstack subnet failed: %v", err)
+		return "", err
+	}
+	network, err := os.GetNetworkByID(subnet.NetworkID)
+	if err != nil {
+		glog.Errorf("Cet openstack network %s failed: %v", subnet.NetworkID, err)
+		return "", err
+	}
+	osRouter, err := os.getRouterByName(network.Name, network.TenantID)
+	if err != nil {
+		glog.Errorf("Cet openstack router failed: %v", err)
+		return "", err
+	}
+	return "qrouter-" + osRouter.ID, nil
+}
+
 // List all ports in the network
 func (os *OpenStack) ListPorts(networkID, deviceOwner string) ([]ports.Port, error) {
 	var results []ports.Port

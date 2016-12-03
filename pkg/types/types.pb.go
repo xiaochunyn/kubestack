@@ -32,6 +32,8 @@ It has these top-level messages:
 	UpdateSubnetRequest
 	ConnectSubnetsRequest
 	DisconnectSubnetsRequest
+	GetRouterNSRequest
+	GetRouterNSResponse
 	ListRulesRequest
 	ListRulesResponse
 	GetRuleRequest
@@ -392,6 +394,23 @@ func (m *DisconnectSubnetsRequest) GetSubnet2() *Subnet {
 	return nil
 }
 
+type GetRouterNSRequest struct {
+	SubnetID string `protobuf:"bytes,1,opt,name=subnetID,proto3" json:"subnetID,omitempty"`
+}
+
+func (m *GetRouterNSRequest) Reset()         { *m = GetRouterNSRequest{} }
+func (m *GetRouterNSRequest) String() string { return proto.CompactTextString(m) }
+func (*GetRouterNSRequest) ProtoMessage()    {}
+
+type GetRouterNSResponse struct {
+	RouterNS string `protobuf:"bytes,1,opt,name=routerNS,proto3" json:"routerNS,omitempty"`
+	Error    string `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (m *GetRouterNSResponse) Reset()         { *m = GetRouterNSResponse{} }
+func (m *GetRouterNSResponse) String() string { return proto.CompactTextString(m) }
+func (*GetRouterNSResponse) ProtoMessage()    {}
+
 type ListRulesRequest struct {
 	TenantID string `protobuf:"bytes,1,opt,name=tenantID,proto3" json:"tenantID,omitempty"`
 }
@@ -714,6 +733,8 @@ func init() {
 	proto.RegisterType((*UpdateSubnetRequest)(nil), "types.UpdateSubnetRequest")
 	proto.RegisterType((*ConnectSubnetsRequest)(nil), "types.ConnectSubnetsRequest")
 	proto.RegisterType((*DisconnectSubnetsRequest)(nil), "types.DisconnectSubnetsRequest")
+	proto.RegisterType((*GetRouterNSRequest)(nil), "types.GetRouterNSRequest")
+	proto.RegisterType((*GetRouterNSResponse)(nil), "types.GetRouterNSResponse")
 	proto.RegisterType((*ListRulesRequest)(nil), "types.ListRulesRequest")
 	proto.RegisterType((*ListRulesResponse)(nil), "types.ListRulesResponse")
 	proto.RegisterType((*GetRuleRequest)(nil), "types.GetRuleRequest")
@@ -971,6 +992,7 @@ type SubnetsClient interface {
 	DeleteSubnet(ctx context.Context, in *DeleteSubnetRequest, opts ...grpc.CallOption) (*CommonResponse, error)
 	ConnectSubnets(ctx context.Context, in *ConnectSubnetsRequest, opts ...grpc.CallOption) (*CommonResponse, error)
 	DisconnectSubnets(ctx context.Context, in *DisconnectSubnetsRequest, opts ...grpc.CallOption) (*CommonResponse, error)
+	GetRouterNS(ctx context.Context, in *GetRouterNSRequest, opts ...grpc.CallOption) (*GetRouterNSResponse, error)
 }
 
 type subnetsClient struct {
@@ -1044,6 +1066,15 @@ func (c *subnetsClient) DisconnectSubnets(ctx context.Context, in *DisconnectSub
 	return out, nil
 }
 
+func (c *subnetsClient) GetRouterNS(ctx context.Context, in *GetRouterNSRequest, opts ...grpc.CallOption) (*GetRouterNSResponse, error) {
+	out := new(GetRouterNSResponse)
+	err := grpc.Invoke(ctx, "/types.Subnets/GetRouterNS", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Server API for Subnets service
 
 type SubnetsServer interface {
@@ -1054,6 +1085,7 @@ type SubnetsServer interface {
 	DeleteSubnet(context.Context, *DeleteSubnetRequest) (*CommonResponse, error)
 	ConnectSubnets(context.Context, *ConnectSubnetsRequest) (*CommonResponse, error)
 	DisconnectSubnets(context.Context, *DisconnectSubnetsRequest) (*CommonResponse, error)
+	GetRouterNS(context.Context, *GetRouterNSRequest) (*GetRouterNSResponse, error)
 }
 
 func RegisterSubnetsServer(s *grpc.Server, srv SubnetsServer) {
@@ -1144,6 +1176,18 @@ func _Subnets_DisconnectSubnets_Handler(srv interface{}, ctx context.Context, de
 	return out, nil
 }
 
+func _Subnets_GetRouterNS_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(GetRouterNSRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(SubnetsServer).GetRouterNS(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 var _Subnets_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "types.Subnets",
 	HandlerType: (*SubnetsServer)(nil),
@@ -1175,6 +1219,10 @@ var _Subnets_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DisconnectSubnets",
 			Handler:    _Subnets_DisconnectSubnets_Handler,
+		},
+		{
+			MethodName: "GetRouterNS",
+			Handler:    _Subnets_GetRouterNS_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},
