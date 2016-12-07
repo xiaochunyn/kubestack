@@ -446,7 +446,7 @@ func (r *NeutronProvider) PodStatus(podName, namespace, podInfraContainerID stri
 }
 
 func main() {
-	neutron, err := InitNeutronProviders("127.0.0.1:4237")
+	neutron, err := InitNeutronProviders("10.10.103.57:4237")
 	if err != nil {
 		fmt.Errorf("init client fail")
 	}
@@ -458,18 +458,18 @@ func main() {
 	}
 	fmt.Println("%v", getNetworkResponse)
 
-	/*testNetName := "testnet3"
+	testNetName := "testnet1"
 	var subnets []*types.Subnet
 	subnet := &types.Subnet{
-		Name:    "net3-sub1",
-		Cidr:    "192.168.30.0/24",
-		Gateway: "192.168.30.1",
+		Name:    "net1-sub1",
+		Cidr:    "192.168.11.0/24",
+		Gateway: "192.168.11.1",
 	}
 	subnets = append(subnets, subnet)
 	subnet = &types.Subnet{
-		Name:    "net3-sub2",
-		Cidr:    "192.168.31.0/24",
-		Gateway: "192.168.31.1",
+		Name:    "net1-sub2",
+		Cidr:    "192.168.12.0/24",
+		Gateway: "192.168.12.1",
 	}
 	subnets = append(subnets, subnet)
 	network := &types.Network{
@@ -496,7 +496,7 @@ func main() {
 	}
 	fmt.Println("%v", getNetworkResponse)*/
 
-	routerNS, err := neutron.Subnets().GetRouterNS("71e4e761-731b-4870-9f25-72e6e00d7689")
+	/*routerNS, err := neutron.Subnets().GetRouterNS("ca95888f-5f4e-4337-9a0d-43bace66373e")
 	if err != nil {
 		glog.Errorf("Provider get routerNS failed: ", err)
 		return

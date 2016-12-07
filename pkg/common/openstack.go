@@ -1159,11 +1159,11 @@ func (os *OpenStack) ensureSecurityGroup(tenantID string) (string, error) {
 
 // Create an port
 func (os *OpenStack) CreatePort(networkID, tenantID, portName, podHostname, subnetID string) (*portsbinding.Port, error) {
-	securitygroup, err := os.ensureSecurityGroup(tenantID)
+	/*securitygroup, err := os.ensureSecurityGroup(tenantID)
 	if err != nil {
 		glog.Errorf("EnsureSecurityGroup failed: %v", err)
 		return nil, err
-	}
+	}*/
 	var fixedIPs [1]ports.IP
 	fixedIPs[0] = ports.IP{
 		SubnetID: subnetID,
@@ -1172,14 +1172,14 @@ func (os *OpenStack) CreatePort(networkID, tenantID, portName, podHostname, subn
 		HostID: getHostName(),
 		//DNSName: podHostname,
 		CreateOptsBuilder: ports.CreateOpts{
-			NetworkID:      networkID,
-			Name:           portName,
-			AdminStateUp:   &adminStateUp,
-			TenantID:       tenantID,
-			DeviceID:       uuid.Generate().String(),
-			FixedIPs:       fixedIPs,
-			DeviceOwner:    fmt.Sprintf("compute:%s", getHostName()),
-			SecurityGroups: []string{securitygroup},
+			NetworkID:    networkID,
+			Name:         portName,
+			AdminStateUp: &adminStateUp,
+			TenantID:     tenantID,
+			DeviceID:     uuid.Generate().String(),
+			FixedIPs:     fixedIPs,
+			DeviceOwner:  fmt.Sprintf("compute:%s", getHostName()),
+			//SecurityGroups: []string{securitygroup},
 		},
 	}
 
