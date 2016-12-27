@@ -446,17 +446,17 @@ func (r *NeutronProvider) PodStatus(podName, namespace, podInfraContainerID stri
 }
 
 func main() {
-	neutron, err := InitNeutronProviders("10.10.103.57:4237")
+	neutron, err := InitNeutronProviders("10.100.100.244:4237")
 	if err != nil {
 		fmt.Errorf("init client fail")
 	}
-	networkName := "br-ex"
+	/*networkName := "br-ex"
 	getNetworkResponse, err := neutron.Networks().GetNetwork(networkName)
 	if err != nil {
 		glog.Errorf("NetworkProvider get network %s failed: %v", networkName, err)
 		return
 	}
-	fmt.Println("%v", getNetworkResponse)
+	fmt.Println("%v", getNetworkResponse)*/
 
 	testNetName := "testnet1"
 	var subnets []*types.Subnet
@@ -563,17 +563,17 @@ func main() {
 	}*/
 
 	/*subnet1 := &types.Subnet{
-		NetworkID: "754c5f95-c175-423e-98e0-7178559336dd",
+		NetworkID: "78708fae-e1ef-4f4f-981f-2cb220114f5d",
 		Tenantid:  "414454afc37f4ff395d06e61167f8108",
-		Name:      "net3-sub1",
-		Cidr:      "192.168.30.0/24",
+		Name:      "net1-sub1",
+		Cidr:      "192.168.11.0/24",
 	}
 
 	subnet2 := &types.Subnet{
-		NetworkID: "754c5f95-c175-423e-98e0-7178559336dd",
+		NetworkID: "78708fae-e1ef-4f4f-981f-2cb220114f5d",
 		Tenantid:  "414454afc37f4ff395d06e61167f8108",
-		Name:      "net3-sub2",
-		Cidr:      "192.168.31.0/24",
+		Name:      "net1-sub2",
+		Cidr:      "192.168.12.0/24",
 	}
 
 	/*err = neutron.Subnets().ConnectSubnets(subnet1, subnet2)
