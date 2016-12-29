@@ -696,7 +696,7 @@ func main() {
 	/*err = neutron.Pods().SetupPod("testPodName3", "testNamespace3", "828db65632e0", getNetworkResponse, "docker")
 	if err != nil {
 		glog.Errorf("NetworkProvier create setup pod failed:%v", err)
-		return
+		return    sss
 	}*/
 
 }
