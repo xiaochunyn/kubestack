@@ -57,6 +57,7 @@ func (h *KubeHandler) registerServer() {
 	provider.RegisterNetworksServer(h.server, h)
 	provider.RegisterPodsServer(h.server, h)
 	provider.RegisterSubnetsServer(h.server, h)
+	provider.RegisterFloatingIPsServer(h.server, h)
 }
 
 func (h *KubeHandler) Active(c context.Context, req *provider.ActiveRequest) (*provider.ActivateResponse, error) {
@@ -336,6 +337,106 @@ func (h *KubeHandler) DeleteLoadBalancer(c context.Context, req *provider.Delete
 
 	glog.V(4).Infof("DeleteLoadBalancer result %v", resp)
 	return &resp, nil
+}
+
+func (h *KubeHandler) CreateFloatingIp(c context.Context, req *provider.CreateFloatingIpRequest) (*provider.CreateFloatingIpResponse, error) {
+	glog.V(4).Infof("CreateFloatingIp with request %v", req.String())
+
+	resp := provider.CreateFloatingIpResponse{}
+	fp, err := h.driver.CreateFloatingIp(req.TenantID)
+	if err != nil {
+		glog.Errorf("Create FloatingIp failed. %s", err)
+		resp.Error = err.Error()
+		return nil, err
+	} else {
+		//resp.FloatingIp.FloatingIpAddress = fp.FloatingIP
+		resp.FloatingIp = fp
+	}
+
+	glog.V(4).Infof("Create FloatingIp result: %v", resp)
+	return &resp, nil
+}
+
+func (h *KubeHandler) BindFloatingIp(c context.Context, req *provider.BindFloatingIpRequest) (*provider.CommonResponse, error) {
+	glog.V(4).Infof("BindFloatingIp with request %v", req.String())
+
+	resp := provider.CommonResponse{}
+	err := h.driver.BindFloatingIp(req.PortId, req.FloatingipId)
+	if err != nil {
+		glog.Errorf("Bind FloatingIp : %s to port %s failed", req.FloatingipId, req.PortId)
+		resp.Error = err.Error()
+		return nil, err
+	}
+
+	glog.V(4).Infof("Bind FloatingIp : %s to port %s .", req.FloatingipId, req.PortId)
+
+	return &resp, nil
+}
+
+func (h *KubeHandler) DelFloatingIp(c context.Context, req *provider.DelFloatingIpRequest) (*provider.CommonResponse, error) {
+	glog.V(4).Infof("Delete FloatingIp with request: %v", req.String())
+
+	resp := provider.CommonResponse{}
+	err := h.driver.DelFloatingIp(req.FloatingipId)
+	if err != nil {
+		glog.Errorf("Delete FloatingIp: %s failed. error: %v", req.FloatingipId, err)
+		resp.Error = err.Error()
+		return nil, err
+	}
+
+	glog.V(4).Infof("Delete FloatingIp: %s .", req.FloatingipId)
+
+	return &resp, nil
+}
+
+func (h *KubeHandler) BindPortToExternal(c context.Context, req *provider.BindPortToExternalRequest) (*provider.BindPortToExternalResponse, error) {
+	glog.V(4).Infof("BindPortToExternal with request : %v", req.String())
+
+	resp := provider.BindPortToExternalResponse{}
+	fp, err := h.driver.BindPortToExternal(req.PortName, req.TenantID)
+	if err != nil {
+		glog.Errorf("Bind Port %s to External Network failed. %v", req.PortName, err)
+		resp.Error = err.Error()
+		return nil, err
+	} else {
+		resp.Floatingip = fp
+	}
+
+	glog.V(4).Infof("Bind port:%s to External Network.", req.PortName)
+	return &resp, nil
+}
+
+func (h *KubeHandler) UnbindPortFromExternal(c context.Context, req *provider.UnbindPortFromExternalRequest) (*provider.CommonResponse, error) {
+	glog.V(4).Infof("Unbind port form External Network with request %v. ", req.String())
+
+	resp := provider.CommonResponse{}
+	err := h.driver.UnbindPortFromExternal(req.PortName)
+	if err != nil {
+		resp.Error = err.Error()
+		glog.Errorf("Unbind Port:%s from External Network failed. %v", req.PortName, err)
+		return nil, err
+	}
+	glog.V(4).Infof("Unbind Port %s from External Network. ", req.PortName)
+	return &resp, nil
+}
+
+func (h *KubeHandler) ListFloatingIps(c context.Context, req *provider.ListFloatingIpsRequest) (*provider.ListFloatingIpsResponse, error) {
+	glog.V(4).Infof("List FlotingIp with request :%v", req.String())
+	resp := provider.ListFloatingIpsResponse{}
+	var result []*provider.FloatingIp
+	var err error
+
+	result, err = h.driver.ListFloatingIps(req.FloatingNetworkID)
+	if err != nil {
+		resp.Error = err.Error()
+		glog.Errorf("List Floating Ip failed : %v", err)
+		return nil, err
+	} else {
+		resp.Floatings = result
+	}
+	glog.V(4).Infof("List FloatingIp result: %v", resp)
+	return &resp, nil
+
 }
 
 func (h *KubeHandler) SetupPod(c context.Context, req *provider.SetupPodRequest) (*provider.CommonResponse, error) {
