@@ -1258,6 +1258,91 @@ func (os *OpenStack) BindPortToFloatingip(portID, floatingIPAddress, tenantID st
 	return nil
 }
 
+// Create a floating ip
+func (os *OpenStack) CreateFloatingIp(tenantID string) (*provider.FloatingIp, error) {
+	//var result *provider.FloatingIp
+	opts := floatingips.CreateOpts{
+		FloatingNetworkID: os.ExtNetID,
+		TenantID:          tenantID,
+	}
+
+	floatingIp, err := floatingips.Create(os.network, opts).Extract()
+	if err != nil {
+		glog.Error("Creating openstack floatingIp failed: %v", err)
+		return nil, err
+	}
+
+	f, err := os.getProviderFloatingIp(floatingIp.ID)
+	if err != nil {
+		glog.Error("Floating Ip: \" %v \" created succeed.", f.FloatingIpAddress)
+		glog.Error("But failed to get it, %v", err)
+		return nil, err
+	}
+
+	return f, nil
+}
+
+func (os *OpenStack) ListFloatingIps(floatingNetworkID string) ([]*provider.FloatingIp, error) {
+	//var results []*floatingips.FloatingIP
+	var results []*provider.FloatingIp
+
+	opts := floatingips.ListOpts{
+		FloatingNetworkID: floatingNetworkID,
+	}
+
+	pager := floatingips.List(os.network, opts)
+	err := pager.EachPage(func(page pagination.Page) (bool, error) {
+
+		floatingipsList, err := floatingips.ExtractFloatingIPs(page)
+		if err != nil {
+			glog.Errorf("Get FloatingIp failed: %v", err)
+			return false, err
+		}
+
+		for _, fips := range floatingipsList {
+			//fip, err := os.getFloatingIPByID(fips.ID)
+			fip, err := os.getProviderFloatingIp(fips.ID)
+			if err != nil {
+				glog.Errorf("Get Floating Ip failed: %v", err)
+				return false, err
+			}
+			results = append(results, fip)
+		}
+		return true, err
+
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+func (os *OpenStack) BindFloatingIp(portId, floatingipID string) error {
+	_, ferr := os.getFloatingIPByID(floatingipID)
+	if ferr != nil {
+		glog.Errorf("Get Floating Ip: %v failed : %v", floatingipID, ferr)
+		return ferr
+	}
+	opts := floatingips.UpdateOpts{PortID: portId}
+	_, err := floatingips.Update(os.network, floatingipID, opts).Extract()
+	if err != nil {
+		glog.Errorf("Associate floatingip failed: %v", err)
+		return err
+	}
+	return nil
+}
+
+func (os *OpenStack) DelFloatingIp(floatingipID string) error {
+	err := floatingips.Delete(os.network, floatingipID).ExtractErr()
+	if err != nil {
+		glog.Errorf("Dlete floatingIP failed: %v", err)
+		return err
+	}
+	return nil
+}
+
 // Bind an port to external network, return floatingip binded
 func (os *OpenStack) BindPortToExternal(portName, tenantID string) (string, error) {
 	port, err := os.GetPort(portName)
@@ -1314,6 +1399,46 @@ func (os *OpenStack) getFloatingIPByPort(portID string) (*floatingips.FloatingIP
 	return result, err
 }
 
+func (os *OpenStack) getProviderFloatingIp(fipID string) (*provider.FloatingIp, error) {
+	f, err := floatingips.Get(os.network, fipID).Extract()
+	if err != nil {
+		glog.Errorf("Get FloatingIp failed: %v", err)
+		return nil, err
+	}
+
+	providerFip := provider.FloatingIp{
+		Uid:               f.ID,
+		NetworkId:         f.FloatingNetworkID,
+		FloatingIpAddress: f.FloatingIP,
+		PortId:            f.PortID,
+		FixedIp:           f.FixedIP,
+		TenantId:          f.TenantID,
+		Status:            f.Status,
+	}
+	return &providerFip, nil
+}
+
+func (os *OpenStack) getFloatingIPByID(fipID string) (*floatingips.FloatingIP, error) {
+	var result *floatingips.FloatingIP
+
+	opts := floatingips.ListOpts{
+		ID: fipID,
+	}
+	pager := floatingips.List(os.network, opts)
+	err := pager.EachPage(func(page pagination.Page) (bool, error) {
+		floatingipList, err := floatingips.ExtractFloatingIPs(page)
+		if err != nil {
+			glog.Errorf("Get FloatingIp :%v failed, %v", fipID, err)
+			return false, err
+		}
+		if len(floatingipList) > 0 {
+			result = &floatingipList[0]
+		}
+		return true, err
+	})
+	return result, err
+}
+
 // Unbind an port from external
 func (os *OpenStack) UnbindPortFromExternal(portName string) error {
 	port, err := os.GetPort(portName)
@@ -1328,19 +1453,24 @@ func (os *OpenStack) UnbindPortFromExternal(portName string) error {
 		return err
 	}
 
-	if fip != nil {
-		err = floatingips.Delete(os.network, fip.ID).ExtractErr()
-		if err != nil {
-			glog.Errorf("delete floatingip failed: %v", err)
-			return err
-		}
+	errs := os.DelFloatingIp(fip.ID)
+	if errs != nil {
+		glog.Errorf("delete floatingip failed: %v", errs)
+		return errs
 	}
+	//	if fip != nil {
+	//		err = floatingips.Delete(os.network, fip.ID).ExtractErr()
+	//		if err != nil {
+	//			glog.Errorf("delete floatingip failed: %v", err)
+	//			return err
+	//		}
+	//	}
 
-	err = ports.Delete(os.network, port.ID).ExtractErr()
-	if err != nil {
-		glog.Errorf("delete port failed: %v", err)
-		return err
-	}
+	//	err = ports.Delete(os.network, port.ID).ExtractErr()
+	//	if err != nil {
+	//		glog.Errorf("delete port failed: %v", err)
+	//		return err
+	//	}
 
 	return nil
 }

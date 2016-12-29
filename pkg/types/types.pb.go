@@ -12,6 +12,16 @@ It has these top-level messages:
 	ActiveRequest
 	ActivateResponse
 	CommonResponse
+	CreateFloatingIpRequest
+	CreateFloatingIpResponse
+	BindFloatingIpRequest
+	DelFloatingIpRequest
+	BindPortToExternalRequest
+	BindPortToExternalResponse
+	UnbindPortFromExternalRequest
+	ListFloatingIpsRequest
+	ListFloatingIpsResponse
+	FloatingIp
 	Subnet
 	Route
 	Rule
@@ -96,6 +106,111 @@ type CommonResponse struct {
 func (m *CommonResponse) Reset()         { *m = CommonResponse{} }
 func (m *CommonResponse) String() string { return proto.CompactTextString(m) }
 func (*CommonResponse) ProtoMessage()    {}
+
+type CreateFloatingIpRequest struct {
+	TenantID string `protobuf:"bytes,1,opt,name=tenantID,proto3" json:"tenantID,omitempty"`
+}
+
+func (m *CreateFloatingIpRequest) Reset()         { *m = CreateFloatingIpRequest{} }
+func (m *CreateFloatingIpRequest) String() string { return proto.CompactTextString(m) }
+func (*CreateFloatingIpRequest) ProtoMessage()    {}
+
+type CreateFloatingIpResponse struct {
+	FloatingIp *FloatingIp `protobuf:"bytes,1,opt,name=floatingIp" json:"floatingIp,omitempty"`
+	Error      string      `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (m *CreateFloatingIpResponse) Reset()         { *m = CreateFloatingIpResponse{} }
+func (m *CreateFloatingIpResponse) String() string { return proto.CompactTextString(m) }
+func (*CreateFloatingIpResponse) ProtoMessage()    {}
+
+func (m *CreateFloatingIpResponse) GetFloatingIp() *FloatingIp {
+	if m != nil {
+		return m.FloatingIp
+	}
+	return nil
+}
+
+type BindFloatingIpRequest struct {
+	PortId       string `protobuf:"bytes,1,opt,name=portId,proto3" json:"portId,omitempty"`
+	FloatingipId string `protobuf:"bytes,2,opt,name=floatingipId,proto3" json:"floatingipId,omitempty"`
+}
+
+func (m *BindFloatingIpRequest) Reset()         { *m = BindFloatingIpRequest{} }
+func (m *BindFloatingIpRequest) String() string { return proto.CompactTextString(m) }
+func (*BindFloatingIpRequest) ProtoMessage()    {}
+
+type DelFloatingIpRequest struct {
+	FloatingipId string `protobuf:"bytes,1,opt,name=floatingipId,proto3" json:"floatingipId,omitempty"`
+}
+
+func (m *DelFloatingIpRequest) Reset()         { *m = DelFloatingIpRequest{} }
+func (m *DelFloatingIpRequest) String() string { return proto.CompactTextString(m) }
+func (*DelFloatingIpRequest) ProtoMessage()    {}
+
+type BindPortToExternalRequest struct {
+	PortName string `protobuf:"bytes,1,opt,name=portName,proto3" json:"portName,omitempty"`
+	TenantID string `protobuf:"bytes,2,opt,name=tenantID,proto3" json:"tenantID,omitempty"`
+}
+
+func (m *BindPortToExternalRequest) Reset()         { *m = BindPortToExternalRequest{} }
+func (m *BindPortToExternalRequest) String() string { return proto.CompactTextString(m) }
+func (*BindPortToExternalRequest) ProtoMessage()    {}
+
+type BindPortToExternalResponse struct {
+	Floatingip string `protobuf:"bytes,1,opt,name=floatingip,proto3" json:"floatingip,omitempty"`
+	Error      string `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (m *BindPortToExternalResponse) Reset()         { *m = BindPortToExternalResponse{} }
+func (m *BindPortToExternalResponse) String() string { return proto.CompactTextString(m) }
+func (*BindPortToExternalResponse) ProtoMessage()    {}
+
+type UnbindPortFromExternalRequest struct {
+	PortName string `protobuf:"bytes,1,opt,name=portName,proto3" json:"portName,omitempty"`
+}
+
+func (m *UnbindPortFromExternalRequest) Reset()         { *m = UnbindPortFromExternalRequest{} }
+func (m *UnbindPortFromExternalRequest) String() string { return proto.CompactTextString(m) }
+func (*UnbindPortFromExternalRequest) ProtoMessage()    {}
+
+type ListFloatingIpsRequest struct {
+	FloatingNetworkID string `protobuf:"bytes,1,opt,name=floatingNetworkID,proto3" json:"floatingNetworkID,omitempty"`
+}
+
+func (m *ListFloatingIpsRequest) Reset()         { *m = ListFloatingIpsRequest{} }
+func (m *ListFloatingIpsRequest) String() string { return proto.CompactTextString(m) }
+func (*ListFloatingIpsRequest) ProtoMessage()    {}
+
+type ListFloatingIpsResponse struct {
+	Floatings []*FloatingIp `protobuf:"bytes,1,rep,name=floatings" json:"floatings,omitempty"`
+	Error     string        `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (m *ListFloatingIpsResponse) Reset()         { *m = ListFloatingIpsResponse{} }
+func (m *ListFloatingIpsResponse) String() string { return proto.CompactTextString(m) }
+func (*ListFloatingIpsResponse) ProtoMessage()    {}
+
+func (m *ListFloatingIpsResponse) GetFloatings() []*FloatingIp {
+	if m != nil {
+		return m.Floatings
+	}
+	return nil
+}
+
+type FloatingIp struct {
+	Uid               string `protobuf:"bytes,1,opt,name=uid,proto3" json:"uid,omitempty"`
+	NetworkId         string `protobuf:"bytes,2,opt,name=networkId,proto3" json:"networkId,omitempty"`
+	FloatingIpAddress string `protobuf:"bytes,3,opt,name=floatingIpAddress,proto3" json:"floatingIpAddress,omitempty"`
+	PortId            string `protobuf:"bytes,4,opt,name=portId,proto3" json:"portId,omitempty"`
+	FixedIp           string `protobuf:"bytes,5,opt,name=fixedIp,proto3" json:"fixedIp,omitempty"`
+	TenantId          string `protobuf:"bytes,6,opt,name=tenantId,proto3" json:"tenantId,omitempty"`
+	Status            string `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
+}
+
+func (m *FloatingIp) Reset()         { *m = FloatingIp{} }
+func (m *FloatingIp) String() string { return proto.CompactTextString(m) }
+func (*FloatingIp) ProtoMessage()    {}
 
 // Subnet is a representaion of a subnet
 type Subnet struct {
@@ -713,6 +828,16 @@ func init() {
 	proto.RegisterType((*ActiveRequest)(nil), "types.ActiveRequest")
 	proto.RegisterType((*ActivateResponse)(nil), "types.ActivateResponse")
 	proto.RegisterType((*CommonResponse)(nil), "types.CommonResponse")
+	proto.RegisterType((*CreateFloatingIpRequest)(nil), "types.CreateFloatingIpRequest")
+	proto.RegisterType((*CreateFloatingIpResponse)(nil), "types.CreateFloatingIpResponse")
+	proto.RegisterType((*BindFloatingIpRequest)(nil), "types.BindFloatingIpRequest")
+	proto.RegisterType((*DelFloatingIpRequest)(nil), "types.DelFloatingIpRequest")
+	proto.RegisterType((*BindPortToExternalRequest)(nil), "types.BindPortToExternalRequest")
+	proto.RegisterType((*BindPortToExternalResponse)(nil), "types.BindPortToExternalResponse")
+	proto.RegisterType((*UnbindPortFromExternalRequest)(nil), "types.UnbindPortFromExternalRequest")
+	proto.RegisterType((*ListFloatingIpsRequest)(nil), "types.ListFloatingIpsRequest")
+	proto.RegisterType((*ListFloatingIpsResponse)(nil), "types.ListFloatingIpsResponse")
+	proto.RegisterType((*FloatingIp)(nil), "types.FloatingIp")
 	proto.RegisterType((*Subnet)(nil), "types.Subnet")
 	proto.RegisterType((*Route)(nil), "types.Route")
 	proto.RegisterType((*Rule)(nil), "types.Rule")
@@ -1637,6 +1762,198 @@ var _Pods_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PodStatus",
 			Handler:    _Pods_PodStatus_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{},
+}
+
+// Client API for FloatingIPs service
+
+type FloatingIPsClient interface {
+	CreateFloatingIp(ctx context.Context, in *CreateFloatingIpRequest, opts ...grpc.CallOption) (*CreateFloatingIpResponse, error)
+	BindFloatingIp(ctx context.Context, in *BindFloatingIpRequest, opts ...grpc.CallOption) (*CommonResponse, error)
+	DelFloatingIp(ctx context.Context, in *DelFloatingIpRequest, opts ...grpc.CallOption) (*CommonResponse, error)
+	BindPortToExternal(ctx context.Context, in *BindPortToExternalRequest, opts ...grpc.CallOption) (*BindPortToExternalResponse, error)
+	UnbindPortFromExternal(ctx context.Context, in *UnbindPortFromExternalRequest, opts ...grpc.CallOption) (*CommonResponse, error)
+	ListFloatingIps(ctx context.Context, in *ListFloatingIpsRequest, opts ...grpc.CallOption) (*ListFloatingIpsResponse, error)
+}
+
+type floatingIPsClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewFloatingIPsClient(cc *grpc.ClientConn) FloatingIPsClient {
+	return &floatingIPsClient{cc}
+}
+
+func (c *floatingIPsClient) CreateFloatingIp(ctx context.Context, in *CreateFloatingIpRequest, opts ...grpc.CallOption) (*CreateFloatingIpResponse, error) {
+	out := new(CreateFloatingIpResponse)
+	err := grpc.Invoke(ctx, "/types.FloatingIPs/CreateFloatingIp", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *floatingIPsClient) BindFloatingIp(ctx context.Context, in *BindFloatingIpRequest, opts ...grpc.CallOption) (*CommonResponse, error) {
+	out := new(CommonResponse)
+	err := grpc.Invoke(ctx, "/types.FloatingIPs/BindFloatingIp", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *floatingIPsClient) DelFloatingIp(ctx context.Context, in *DelFloatingIpRequest, opts ...grpc.CallOption) (*CommonResponse, error) {
+	out := new(CommonResponse)
+	err := grpc.Invoke(ctx, "/types.FloatingIPs/DelFloatingIp", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *floatingIPsClient) BindPortToExternal(ctx context.Context, in *BindPortToExternalRequest, opts ...grpc.CallOption) (*BindPortToExternalResponse, error) {
+	out := new(BindPortToExternalResponse)
+	err := grpc.Invoke(ctx, "/types.FloatingIPs/BindPortToExternal", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *floatingIPsClient) UnbindPortFromExternal(ctx context.Context, in *UnbindPortFromExternalRequest, opts ...grpc.CallOption) (*CommonResponse, error) {
+	out := new(CommonResponse)
+	err := grpc.Invoke(ctx, "/types.FloatingIPs/UnbindPortFromExternal", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *floatingIPsClient) ListFloatingIps(ctx context.Context, in *ListFloatingIpsRequest, opts ...grpc.CallOption) (*ListFloatingIpsResponse, error) {
+	out := new(ListFloatingIpsResponse)
+	err := grpc.Invoke(ctx, "/types.FloatingIPs/ListFloatingIps", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Server API for FloatingIPs service
+
+type FloatingIPsServer interface {
+	CreateFloatingIp(context.Context, *CreateFloatingIpRequest) (*CreateFloatingIpResponse, error)
+	BindFloatingIp(context.Context, *BindFloatingIpRequest) (*CommonResponse, error)
+	DelFloatingIp(context.Context, *DelFloatingIpRequest) (*CommonResponse, error)
+	BindPortToExternal(context.Context, *BindPortToExternalRequest) (*BindPortToExternalResponse, error)
+	UnbindPortFromExternal(context.Context, *UnbindPortFromExternalRequest) (*CommonResponse, error)
+	ListFloatingIps(context.Context, *ListFloatingIpsRequest) (*ListFloatingIpsResponse, error)
+}
+
+func RegisterFloatingIPsServer(s *grpc.Server, srv FloatingIPsServer) {
+	s.RegisterService(&_FloatingIPs_serviceDesc, srv)
+}
+
+func _FloatingIPs_CreateFloatingIp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(CreateFloatingIpRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(FloatingIPsServer).CreateFloatingIp(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _FloatingIPs_BindFloatingIp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(BindFloatingIpRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(FloatingIPsServer).BindFloatingIp(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _FloatingIPs_DelFloatingIp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(DelFloatingIpRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(FloatingIPsServer).DelFloatingIp(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _FloatingIPs_BindPortToExternal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(BindPortToExternalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(FloatingIPsServer).BindPortToExternal(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _FloatingIPs_UnbindPortFromExternal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(UnbindPortFromExternalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(FloatingIPsServer).UnbindPortFromExternal(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _FloatingIPs_ListFloatingIps_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(ListFloatingIpsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(FloatingIPsServer).ListFloatingIps(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+var _FloatingIPs_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "types.FloatingIPs",
+	HandlerType: (*FloatingIPsServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "CreateFloatingIp",
+			Handler:    _FloatingIPs_CreateFloatingIp_Handler,
+		},
+		{
+			MethodName: "BindFloatingIp",
+			Handler:    _FloatingIPs_BindFloatingIp_Handler,
+		},
+		{
+			MethodName: "DelFloatingIp",
+			Handler:    _FloatingIPs_DelFloatingIp_Handler,
+		},
+		{
+			MethodName: "BindPortToExternal",
+			Handler:    _FloatingIPs_BindPortToExternal_Handler,
+		},
+		{
+			MethodName: "UnbindPortFromExternal",
+			Handler:    _FloatingIPs_UnbindPortFromExternal_Handler,
+		},
+		{
+			MethodName: "ListFloatingIps",
+			Handler:    _FloatingIPs_ListFloatingIps_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},

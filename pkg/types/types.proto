@@ -46,6 +46,14 @@ service Pods {
 	rpc PodStatus(PodStatusRequest) returns (PodStatusResponse) {}
 }
 
+service FloatingIPs{
+	rpc CreateFloatingIp(CreateFloatingIpRequest) returns (CreateFloatingIpResponse) {}
+    rpc BindFloatingIp(BindFloatingIpRequest) returns (CommonResponse) {}
+    rpc DelFloatingIp(DelFloatingIpRequest) returns (CommonResponse) {}
+    rpc BindPortToExternal(BindPortToExternalRequest) returns (BindPortToExternalResponse) {}
+    rpc UnbindPortFromExternal(UnbindPortFromExternalRequest) returns (CommonResponse) {}
+    rpc ListFloatingIps(ListFloatingIpsRequest) returns (ListFloatingIpsResponse) {}
+}
 
 message ActiveRequest {
 }
@@ -57,6 +65,57 @@ message ActivateResponse {
 
 message CommonResponse {
     string error = 1;
+}
+
+message CreateFloatingIpRequest {
+    string tenantID = 1;
+}
+
+message CreateFloatingIpResponse{
+    FloatingIp floatingIp = 1;
+    string error          = 2;  
+}
+
+message BindFloatingIpRequest {
+    string portId           = 1;
+    string floatingipId     = 2;
+}
+
+message DelFloatingIpRequest{
+    string floatingipId     = 1;
+}
+
+message BindPortToExternalRequest {
+    string portName         = 1;
+    string tenantID         = 2;
+}
+
+message BindPortToExternalResponse {
+    string floatingip       = 1;
+    string error            = 2;
+}
+
+message UnbindPortFromExternalRequest {
+    string portName         = 1;
+}
+
+message ListFloatingIpsRequest {
+    string floatingNetworkID = 1;
+}
+
+message ListFloatingIpsResponse {
+    repeated FloatingIp floatings = 1;
+    string error                  = 2;
+}
+
+message FloatingIp{
+    string uid              = 1;
+    string networkId        = 2;
+    string floatingIpAddress= 3;
+    string portId           = 4;
+    string fixedIp          = 5;
+    string tenantId         = 6;
+    string status           = 7;
 }
 
 // Subnet is a representaion of a subnet
