@@ -1258,6 +1258,45 @@ func (os *OpenStack) BindPortToFloatingip(portID, floatingIPAddress, tenantID st
 	return nil
 }
 
+// Create a Tenant
+func (os *OpenStack) CreateTenant(name, description string, enabled bool) (*tenants.Tenant, error) {
+	opts := tenants.CreateOpts{
+		Name:        name,
+		Description: description,
+		Enabled:     enabled,
+	}
+
+	tenant, err := tenants.Create(os.network, opts).Extract()
+	if err != nil {
+		glog.Errorf("Create Tenant Failed, %v", err)
+		return nil, err
+	}
+	return tenant, nil
+}
+
+// List Tenants
+func (os *OpenStack) ListTenants() ([]*tenants.Tenant, error) {
+	var results []*tenants.Tenant
+	opts := tenants.ListOpts{}
+	pager := tenants.List(os.identity, &opts)
+
+	err := pager.EachPage(func(page pagination.Page) (bool, error) {
+		tenantsList, err := tenants.ExtractTenants(page)
+		if err != nil {
+			glog.Errorf("List Tenants Failed, %v", err)
+			return false, err
+		}
+		for _, t := range tenantsList {
+			results = append(results, t)
+		}
+		return true, err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
 // Create a floating ip
 func (os *OpenStack) CreateFloatingIp(tenantID string) (*provider.FloatingIp, error) {
 	//var result *provider.FloatingIp
